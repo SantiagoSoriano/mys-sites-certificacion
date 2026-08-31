@@ -15,32 +15,43 @@ export default function LoginPage() {
 function LoginInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugUrl, setDebugUrl] = useState<string | null>(null);
   const params = useSearchParams();
   const urlError = params.get("error");
-  const urlDesc = params.get("desc");
+  const urlDesc = params.get("desc") ?? params.get("error_description");
 
   async function signInWithGoogle() {
     setLoading(true);
     setError(null);
+    setDebugUrl(null);
     const supabase = createClient();
     const siteUrl =
       process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${siteUrl}/auth/callback?next=/dashboard`,
+        skipBrowserRedirect: true,
       },
     });
     if (error) {
       setError(error.message);
       setLoading(false);
+      return;
     }
+    if (data?.url) {
+      setDebugUrl(data.url);
+      setLoading(false);
+      return;
+    }
+    setError("no_url_returned");
+    setLoading(false);
   }
 
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm bg-white/60 backdrop-blur rounded-2xl border border-border p-8 space-y-6 text-center">
-        <div className="space-y-2">
+      <div className="w-full max-w-md bg-white/60 backdrop-blur rounded-2xl border border-border p-8 space-y-6">
+        <div className="space-y-2 text-center">
           <h1 className="text-3xl font-semibold">
             <span className="text-terracota">MyS</span>{" "}
             <span className="text-cafe">Sites</span>
@@ -56,13 +67,36 @@ function LoginInner() {
           className="w-full inline-flex items-center justify-center gap-3 rounded-full bg-cafe px-6 py-3 text-crema font-medium hover:bg-cafe/90 disabled:opacity-60 transition"
         >
           <GoogleIcon />
-          {loading ? "Redirigiendo…" : "Continuar con Google"}
+          {loading ? "Cargando…" : "Continuar con Google"}
         </button>
 
         {(error || urlError) && (
-          <div className="text-sm text-terracota-oscuro space-y-1">
+          <div className="text-sm text-terracota-oscuro text-center space-y-1">
             <p className="font-medium">{error ?? `Error: ${urlError}`}</p>
             {urlDesc && <p className="text-xs opacity-80">{urlDesc}</p>}
+          </div>
+        )}
+
+        {debugUrl && (
+          <div className="text-xs space-y-2 border-t border-border pt-4">
+            <p className="font-medium text-cafe">Debug URL generada:</p>
+            <textarea
+              readOnly
+              value={debugUrl}
+              className="w-full h-32 p-2 rounded border border-border font-mono text-[10px] bg-white/60"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigator.clipboard.writeText(debugUrl)}
+                className="text-xs text-verde underline"
+              >
+                Copiar
+              </button>
+              <a href={debugUrl} className="text-xs text-verde underline">
+                Ir a esa URL
+              </a>
+            </div>
           </div>
         )}
       </div>
