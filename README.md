@@ -20,3 +20,4 @@ npm run dev
 ```
 
 Requiere `.env.local` con las variables de Supabase y Anthropic (ver `.env.example`).
+
