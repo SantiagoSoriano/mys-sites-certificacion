@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
+  );
+}
+
+function LoginInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const params = useSearchParams();
+  const urlError = params.get("error");
+  const urlDesc = params.get("desc");
 
   async function signInWithGoogle() {
     setLoading(true);
@@ -47,8 +59,11 @@ export default function LoginPage() {
           {loading ? "Redirigiendo…" : "Continuar con Google"}
         </button>
 
-        {error && (
-          <p className="text-sm text-terracota-oscuro">{error}</p>
+        {(error || urlError) && (
+          <div className="text-sm text-terracota-oscuro space-y-1">
+            <p className="font-medium">{error ?? `Error: ${urlError}`}</p>
+            {urlDesc && <p className="text-xs opacity-80">{urlDesc}</p>}
+          </div>
         )}
       </div>
     </main>
