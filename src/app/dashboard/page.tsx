@@ -1,4 +1,6 @@
 import { getDashboardData, pesos, requireUser } from "@/lib/db/queries";
+import { fraseDelDia } from "@/lib/motivation";
+import { getPueblaWeather } from "@/lib/weather";
 import TopNav from "@/components/TopNav";
 import StatCard from "./StatCard";
 
@@ -6,14 +8,42 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { supabase, user } = await requireUser();
-  const data = await getDashboardData(supabase, user.id);
+  const [data, weather] = await Promise.all([
+    getDashboardData(supabase, user.id),
+    getPueblaWeather(),
+  ]);
 
   const enrollment = data.enrollment;
   const puedeExamen = (enrollment?.dia_actual ?? 1) >= 8 && !data.certificado;
+  const frase = fraseDelDia();
 
   return (
     <main className="flex-1 px-6 py-10 max-w-4xl mx-auto w-full space-y-8">
       <TopNav user={user} variant="vendedor" />
+
+      <section className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 rounded-2xl border border-border bg-terracota/10 px-5 py-4">
+          <p className="text-[10px] uppercase tracking-widest text-terracota font-medium">
+            Frase del día
+          </p>
+          <p className="text-cafe italic mt-1 leading-snug">
+            "{frase}"
+          </p>
+        </div>
+        {weather && (
+          <div className="sm:w-52 rounded-2xl border border-border bg-verde/10 px-5 py-4 flex items-center gap-4">
+            <span className="text-4xl" aria-hidden="true">{weather.emoji}</span>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-verde font-medium">
+                Puebla ahora
+              </p>
+              <p className="text-cafe font-semibold">
+                {weather.tempC}°C · {weather.text}
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-cafe">Tu curso</h2>
