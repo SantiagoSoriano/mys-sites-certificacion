@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { getDashboardData, pesos, requireUser } from "@/lib/db/queries";
-import SignOutButton from "./sign-out-button";
+import TopNav from "@/components/TopNav";
 import StatCard from "./StatCard";
 
 export const dynamic = "force-dynamic";
@@ -9,33 +8,12 @@ export default async function DashboardPage() {
   const { supabase, user } = await requireUser();
   const data = await getDashboardData(supabase, user.id);
 
-  const primerNombre = user.nombre.split(" ")[0];
   const enrollment = data.enrollment;
   const puedeExamen = (enrollment?.dia_actual ?? 1) >= 8 && !data.certificado;
 
   return (
     <main className="flex-1 px-6 py-10 max-w-4xl mx-auto w-full space-y-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-verde font-medium">
-            MyS Sites · Vendedor
-          </p>
-          <h1 className="text-3xl font-semibold text-cafe mt-1">
-            Hola, {primerNombre}
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          {user.rol === "admin" && (
-            <Link
-              href="/admin"
-              className="text-sm text-verde underline underline-offset-4"
-            >
-              Panel admin
-            </Link>
-          )}
-          <SignOutButton />
-        </div>
-      </header>
+      <TopNav user={user} variant="vendedor" />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-cafe">Tu curso</h2>

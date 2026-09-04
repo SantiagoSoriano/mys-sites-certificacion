@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { getAdminOverview, requireAdmin } from "@/lib/db/queries";
-import SignOutButton from "../dashboard/sign-out-button";
+import TopNav from "@/components/TopNav";
 import StatCard from "../dashboard/StatCard";
 
 export const dynamic = "force-dynamic";
@@ -11,28 +10,7 @@ export default async function AdminPage() {
 
   return (
     <main className="flex-1 px-6 py-10 max-w-4xl mx-auto w-full space-y-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-terracota font-medium">
-            MyS Sites · Admin
-          </p>
-          <h1 className="text-3xl font-semibold text-cafe mt-1">
-            Panel de control
-          </h1>
-          <p className="text-sm text-cafe/60 mt-1">
-            {user.nombre} · {user.email}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard"
-            className="text-sm text-verde underline underline-offset-4"
-          >
-            Ver como vendedor
-          </Link>
-          <SignOutButton />
-        </div>
-      </header>
+      <TopNav user={user} variant="admin" />
 
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
