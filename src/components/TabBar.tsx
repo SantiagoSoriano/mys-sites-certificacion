@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { LayoutDashboard, GraduationCap, Info, Shield } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -25,7 +26,7 @@ type Props = { tabs: TabItem[] };
 
 export default function TabBar({ tabs }: Props) {
   const pathname = usePathname();
-  const activeIndex = Math.max(
+  const routeActiveIndex = Math.max(
     tabs.findIndex(
       (t) =>
         pathname === t.href ||
@@ -35,17 +36,23 @@ export default function TabBar({ tabs }: Props) {
     0
   );
 
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const focusIndex = hoveredIndex ?? routeActiveIndex;
+
   const tabPercent = 100 / tabs.length;
-  const activeCenterPercent = tabPercent * activeIndex + tabPercent / 2;
+  const focusCenterPercent = tabPercent * focusIndex + tabPercent / 2;
 
   return (
     <div className="relative w-full max-w-md mx-auto">
-      <div className="relative bg-cafe rounded-full shadow-lg">
-        {/* Curved notch that follows the active tab */}
+      <div
+        className="relative bg-cafe rounded-full shadow-lg"
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
+        {/* Curved notch that follows the focused tab */}
         <div
           className="absolute top-0 h-full pointer-events-none transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
           style={{
-            left: `calc(${activeCenterPercent}% - 30px)`,
+            left: `calc(${focusCenterPercent}% - 30px)`,
             width: "60px",
           }}
           aria-hidden="true"
@@ -65,24 +72,25 @@ export default function TabBar({ tabs }: Props) {
 
         <ul className="relative flex items-stretch justify-between px-2">
           {tabs.map((tab, i) => {
-            const isActive = i === activeIndex;
+            const isFocused = i === focusIndex;
             const Icon = ICONS[tab.icon];
             return (
               <li key={tab.href} className="flex-1">
                 <Link
                   href={tab.href}
-                  className="relative flex flex-col items-center justify-center h-16 group"
+                  onMouseEnter={() => setHoveredIndex(i)}
+                  onFocus={() => setHoveredIndex(i)}
+                  onBlur={() => setHoveredIndex(null)}
+                  className="relative flex flex-col items-center justify-center h-16 outline-none"
                 >
                   <span
-                    className={`transition-all duration-500 ${
-                      isActive
-                        ? "-translate-y-6 opacity-100"
-                        : "opacity-70 group-hover:opacity-100"
+                    className={`transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                      isFocused ? "-translate-y-6" : "translate-y-0"
                     }`}
                   >
                     <span
                       className={`flex items-center justify-center rounded-full transition-all duration-500 ${
-                        isActive
+                        isFocused
                           ? "w-12 h-12 bg-terracota text-crema shadow-md ring-4 ring-crema"
                           : "w-10 h-10 text-crema/80"
                       }`}
@@ -91,8 +99,8 @@ export default function TabBar({ tabs }: Props) {
                     </span>
                   </span>
                   <span
-                    className={`absolute bottom-1.5 text-[10px] font-medium tracking-wide transition-all duration-300 ${
-                      isActive ? "text-cafe/0" : "text-crema/70 group-hover:text-crema"
+                    className={`absolute bottom-1.5 text-[10px] font-medium tracking-wide transition-opacity duration-300 ${
+                      isFocused ? "opacity-0" : "opacity-70 text-crema"
                     }`}
                   >
                     {tab.label}
@@ -105,7 +113,7 @@ export default function TabBar({ tabs }: Props) {
       </div>
 
       <p className="text-center text-xs font-medium text-cafe/80 mt-2 uppercase tracking-widest">
-        {tabs[activeIndex]?.label}
+        {tabs[focusIndex]?.label}
       </p>
     </div>
   );

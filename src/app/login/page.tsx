@@ -66,18 +66,6 @@ function LoginInner() {
           </p>
         </div>
 
-        {/* Diagonal accent between halves */}
-        <div
-          className="absolute inset-y-0 pointer-events-none"
-          style={{
-            left: "50%",
-            width: "80px",
-            transform: "translateX(-40px)",
-            background: "var(--brand-terracota)",
-            clipPath: "polygon(100% 0, 0 100%, 100% 100%)",
-          }}
-        />
-
         {/* RIGHT — Google button (revealed underneath) */}
         <div className="absolute inset-y-0 right-0 w-1/2 flex flex-col items-center justify-center gap-4 px-4 sm:px-6 text-center">
           <p className="text-xs text-cafe/70">
