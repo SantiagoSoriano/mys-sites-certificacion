@@ -71,7 +71,7 @@ function CallbackInner() {
       <CallbackShell message="Algo falló al iniciar sesión.">
         <p className="text-sm text-terracota-oscuro mt-2 break-all">{error}</p>
         <a
-          href="/login"
+          href="/"
           className="inline-block mt-6 text-sm text-verde underline"
         >
           Volver a intentar
