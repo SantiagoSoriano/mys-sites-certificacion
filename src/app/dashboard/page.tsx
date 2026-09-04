@@ -47,7 +47,7 @@ export default async function DashboardPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-cafe">Tu curso</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <StatCard
             label="Día actual"
             value={enrollment ? `${enrollment.dia_actual} / 8` : "—"}
@@ -71,26 +71,12 @@ export default async function DashboardPage() {
             accent={data.practicaHoyCompletada ? "verde" : "cafe"}
             href="/curso"
           />
-          <StatCard
-            label="Examen"
-            value={
-              data.certificado
-                ? "Certificado"
-                : puedeExamen
-                ? "Disponible"
-                : "Bloqueado"
-            }
-            hint={
-              data.certificado
-                ? "Puedes vender de verdad"
-                : puedeExamen
-                ? "Desbloqueado en día 8"
-                : "Se abre en el día 8"
-            }
-            accent={data.certificado ? "verde" : "cafe"}
-            href={puedeExamen ? "/examen" : undefined}
-          />
         </div>
+        <ExamCard
+          dia={enrollment?.dia_actual ?? 1}
+          disponible={puedeExamen}
+          certificado={data.certificado}
+        />
       </section>
 
       <section className="space-y-3">
@@ -134,5 +120,94 @@ export default async function DashboardPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+function ExamCard({
+  dia,
+  disponible,
+  certificado,
+}: {
+  dia: number;
+  disponible: boolean;
+  certificado: boolean;
+}) {
+  if (certificado) {
+    return (
+      <div className="rounded-2xl bg-verde text-crema p-6 sm:p-8 flex items-center gap-6">
+        <span className="text-6xl sm:text-7xl" aria-hidden="true">🏆</span>
+        <div className="flex-1">
+          <p className="text-[10px] uppercase tracking-widest opacity-80 font-medium">
+            Certificado
+          </p>
+          <h3 className="text-2xl sm:text-3xl font-semibold mt-1">
+            Ya vendes de verdad
+          </h3>
+          <p className="text-sm opacity-90 mt-1">
+            Recibes prospectos, ganas 20% de comisión por cada cliente que cierres.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (disponible) {
+    return (
+      <a
+        href="/examen"
+        className="block rounded-2xl bg-terracota text-crema p-6 sm:p-8 shadow-lg hover:bg-terracota-oscuro transition group"
+      >
+        <div className="flex items-center gap-6">
+          <span className="text-6xl sm:text-7xl group-hover:scale-110 transition" aria-hidden="true">
+            ✨
+          </span>
+          <div className="flex-1">
+            <p className="text-[10px] uppercase tracking-widest opacity-80 font-medium">
+              Examen disponible
+            </p>
+            <h3 className="text-2xl sm:text-3xl font-semibold mt-1">
+              Tu certificación te espera
+            </h3>
+            <p className="text-sm opacity-90 mt-1">
+              Apruébalo con 8 o más en las dos partes y arrancas a vender de verdad.
+            </p>
+          </div>
+          <span className="text-2xl opacity-70 group-hover:translate-x-1 transition" aria-hidden="true">
+            →
+          </span>
+        </div>
+      </a>
+    );
+  }
+
+  const diasFaltan = Math.max(0, 8 - dia);
+
+  return (
+    <div className="rounded-2xl bg-cafe text-crema p-6 sm:p-8 flex items-center gap-6 relative overflow-hidden">
+      {/* Decorative padlock backdrop */}
+      <span
+        className="absolute -right-4 -bottom-4 text-[10rem] opacity-5 pointer-events-none"
+        aria-hidden="true"
+      >
+        🔒
+      </span>
+      <span className="text-6xl sm:text-7xl relative z-10" aria-hidden="true">
+        🔒
+      </span>
+      <div className="flex-1 relative z-10">
+        <p className="text-[10px] uppercase tracking-widest opacity-70 font-medium">
+          Examen bloqueado
+        </p>
+        <h3 className="text-2xl sm:text-3xl font-semibold mt-1">
+          Tu meta al día 8
+        </h3>
+        <p className="text-sm opacity-85 mt-1">
+          {diasFaltan > 0
+            ? `Te faltan ${diasFaltan} ${diasFaltan === 1 ? "día" : "días"} de práctica para desbloquearlo.`
+            : "Estás a nada — mantén el ritmo diario."}{" "}
+          Aprobarlo te da la certificación y prospectos reales.
+        </p>
+      </div>
+    </div>
   );
 }
