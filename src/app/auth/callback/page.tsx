@@ -24,7 +24,6 @@ function CallbackInner() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Detect ?error=... in query (Google or Supabase rejected)
     const urlError = params.get("error") ?? params.get("error_description");
     if (urlError) {
       setError(decodeURIComponent(urlError));
@@ -32,12 +31,46 @@ function CallbackInner() {
     }
 
     (async () => {
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const hasHashToken = hash && hash.includes("access_token");
       const code = params.get("code");
 
-      // Case 1: PKCE flow — server-side code exchange happens here client-side too
+      // Case A: implicit flow — Supabase JS con detectSessionInUrl:true
+      // procesa el hash automáticamente al iniciar. Le damos un momento y
+      // luego verificamos la sesión. Esto es lo esperado en nuestra config
+      // actual (flowType: 'implicit' en el cliente).
+      if (hasHashToken) {
+        for (let i = 0; i < 20; i++) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session) {
+            void trackLogin();
+            router.replace(next);
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 150));
+        }
+        setError("no_session_from_hash");
+        return;
+      }
+
+      // Case B: PKCE flow — hay ?code=. Solo intenta si NO hay hash
+      // (evitamos el race del PKCE code verifier missing cuando en
+      // realidad el flow venía por hash).
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
+          // Si falla, intenta detectar sesión del hash o storage por si
+          // Supabase JS ya la había armado en paralelo.
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session) {
+            void trackLogin();
+            router.replace(next);
+            return;
+          }
           setError(`exchange_failed: ${error.message}`);
           return;
         }
@@ -46,21 +79,14 @@ function CallbackInner() {
         return;
       }
 
-      // Case 2: Implicit flow — tokens are in the URL hash.
-      // Supabase JS with detectSessionInUrl: true reads them automatically
-      // during client init. Wait a tick then verify.
-      const hash = window.location.hash;
-      if (hash && hash.includes("access_token")) {
-        await new Promise((r) => setTimeout(r, 300));
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          void trackLogin();
-          router.replace(next);
-          return;
-        }
-        setError("no_session_from_hash");
+      // Fallback: quizás la sesión ya se armó sola (returning user con
+      // cookies válidas). Chequea una vez más antes de rendirse.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        void trackLogin();
+        router.replace(next);
         return;
       }
 
