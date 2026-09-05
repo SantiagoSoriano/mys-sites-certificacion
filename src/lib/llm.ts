@@ -13,7 +13,9 @@ export type ClientTurn = {
   opciones?: string[]; // Solo en etapa "multiple": 3 posibles respuestas
 };
 
-const GROQ_MODEL = "llama-3.1-8b-instant";
+// openai/gpt-oss-20b: modelo abierto de OpenAI hosted en Groq. Free tier
+// sin restricción de licencia (los Llama de Meta requieren verificación).
+const GROQ_MODEL = "openai/gpt-oss-20b";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 async function callLLM(prompt: string): Promise<string> {
