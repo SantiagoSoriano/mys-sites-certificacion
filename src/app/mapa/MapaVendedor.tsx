@@ -216,72 +216,105 @@ function MapView({
   const mapRef = useRef<unknown>(null);
   const [ready, setReady] = useState(false);
 
+  const [mapaError, setMapaError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
     let cancelled = false;
 
     (async () => {
-      const [{ default: L }] = await Promise.all([
-        import("leaflet"),
-        import("leaflet.markercluster"),
-      ]);
-      injectCss("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
-      injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css");
-      injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css");
+      try {
+        console.log("[mapa] init: importando Leaflet…");
+        const [{ default: L }] = await Promise.all([
+          import("leaflet"),
+          import("leaflet.markercluster"),
+        ]);
+        console.log("[mapa] Leaflet OK, inyectando CSS");
+        injectCss("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
+        injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css");
+        injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css");
 
-      if (cancelled || !mapContainerRef.current) return;
+        if (cancelled || !mapContainerRef.current) return;
 
-      const map = L.map(mapContainerRef.current, {
-        center: [19.0413, -98.2062],
-        zoom: 12,
-        zoomControl: true,
-        preferCanvas: true,
-      });
+        // Asegurar que el container tiene tamaño antes de crear el mapa
+        const container = mapContainerRef.current;
+        console.log("[mapa] container size:", container.clientWidth, "x", container.clientHeight);
 
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        {
-          attribution: "&copy; OpenStreetMap · CARTO",
-          subdomains: "abcd",
-          maxZoom: 19,
-        }
-      ).addTo(map);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cluster = (L as any).markerClusterGroup({
-        disableClusteringAtZoom: 17,
-        chunkedLoading: true,
-        maxClusterRadius: 60,
-        showCoverageOnHover: false,
-      });
-
-      const markers = prospects
-        .filter((p) => typeof p.lat === "number" && typeof p.lng === "number")
-        .map((p) => {
-          const color = colorPorCalidad(p.calidad_sitio, p.website);
-          const icon = L.divIcon({
-            className: "",
-            html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.9);box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>`,
-            iconSize: [12, 12],
-            iconAnchor: [6, 6],
-          });
-          const marker = L.marker([p.lat, p.lng], { icon }).bindPopup(
-            `<div style="font-family:-apple-system,sans-serif;">
-              <div style="font-weight:600;font-size:13px;">${escapeHtml(p.nombre)}</div>
-              <div style="font-size:11px;color:#6b7280;margin-top:2px;">${escapeHtml(p.direccion || "")}</div>
-              ${p.telefono ? `<div style="font-size:12px;color:#2563eb;margin-top:2px;">${escapeHtml(p.telefono)}</div>` : ""}
-              <div style="font-size:11px;color:#9ca3af;margin-top:4px;">${calidadLabel(p.calidad_sitio, p.website)}</div>
-            </div>`,
-            { maxWidth: 220 }
-          );
-          marker.on("click", () => setSelected(p));
-          return marker;
+        const map = L.map(container, {
+          center: [19.0413, -98.2062],
+          zoom: 12,
+          zoomControl: true,
+          preferCanvas: true,
         });
 
-      cluster.addLayers(markers);
-      map.addLayer(cluster);
-      mapRef.current = map;
-      setReady(true);
+        L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+          {
+            attribution: "&copy; OpenStreetMap · CARTO",
+            subdomains: "abcd",
+            maxZoom: 19,
+          }
+        ).addTo(map);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cluster = (L as any).markerClusterGroup({
+          disableClusteringAtZoom: 17,
+          chunkedLoading: true,
+          maxClusterRadius: 60,
+          showCoverageOnHover: false,
+        });
+
+        const markers = prospects
+          .filter((p) => typeof p.lat === "number" && typeof p.lng === "number")
+          .map((p) => {
+            const color = colorPorCalidad(p.calidad_sitio, p.website);
+            const icon = L.divIcon({
+              className: "",
+              html: `<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.9);box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>`,
+              iconSize: [12, 12],
+              iconAnchor: [6, 6],
+            });
+            const marker = L.marker([p.lat, p.lng], { icon }).bindPopup(
+              `<div style="font-family:-apple-system,sans-serif;">
+                <div style="font-weight:600;font-size:13px;">${escapeHtml(p.nombre)}</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">${escapeHtml(p.direccion || "")}</div>
+                ${p.telefono ? `<div style="font-size:12px;color:#2563eb;margin-top:2px;">${escapeHtml(p.telefono)}</div>` : ""}
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">${calidadLabel(p.calidad_sitio, p.website)}</div>
+              </div>`,
+              { maxWidth: 220 }
+            );
+            marker.on("click", () => setSelected(p));
+            return marker;
+          });
+
+        console.log(`[mapa] agregando ${markers.length} markers al cluster`);
+        cluster.addLayers(markers);
+        map.addLayer(cluster);
+        mapRef.current = map;
+
+        // Fix clásico de Leaflet: si el container se creó en un layout que
+        // aún no había calculado dimensiones, invalidateSize fuerza el
+        // recálculo. Ejecutamos en un rAF + timeout para máxima seguridad.
+        requestAnimationFrame(() => {
+          if (!cancelled && mapRef.current) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (mapRef.current as any).invalidateSize?.();
+          }
+        });
+        setTimeout(() => {
+          if (!cancelled && mapRef.current) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (mapRef.current as any).invalidateSize?.();
+          }
+        }, 250);
+
+        console.log("[mapa] listo");
+        setReady(true);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[mapa] init failed:", e);
+        if (!cancelled) setMapaError(msg);
+      }
     })();
 
     return () => {
@@ -293,6 +326,16 @@ function MapView({
       }
     };
   }, [prospects, setSelected]);
+
+  // Re-invalidate size si la ventana cambia de tamaño (fix zoom bug en desktop)
+  useEffect(() => {
+    function onResize() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mapRef.current as any)?.invalidateSize?.();
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   async function reclamar() {
     if (!selected || reclamando || slotsLibres <= 0) return;
@@ -327,10 +370,19 @@ function MapView({
     <div className="space-y-4">
       <div
         ref={mapContainerRef}
-        className="rounded-2xl border border-border overflow-hidden bg-white/60"
-        style={{ height: "500px" }}
+        className="rounded-2xl border border-border overflow-hidden bg-cafe/5"
+        style={{ height: "500px", minHeight: "500px", width: "100%" }}
       />
-      {!ready && (
+      {mapaError && (
+        <div className="rounded-lg border border-border bg-terracota/10 p-3 text-sm text-terracota-oscuro">
+          <p className="font-medium">Error al dibujar el mapa</p>
+          <p className="text-xs mt-1">{mapaError}</p>
+          <p className="text-xs mt-2 text-cafe/70">
+            Abre la consola del navegador (F12) para más detalle.
+          </p>
+        </div>
+      )}
+      {!ready && !mapaError && (
         <p className="text-xs text-cafe/60 text-center">Dibujando el mapa…</p>
       )}
       <p className="text-xs text-cafe/60 text-center">
