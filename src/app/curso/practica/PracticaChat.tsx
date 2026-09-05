@@ -19,6 +19,7 @@ export default function PracticaChat({ businessId, businessNombre }: Props) {
   const [finishing, setFinishing] = useState(false);
   const [etapa, setEtapa] = useState<Etapa | null>(null);
   const [guia, setGuia] = useState<string | null>(null);
+  const [guiaDismissed, setGuiaDismissed] = useState(false);
   const [opciones, setOpciones] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ score: number; feedback: string } | null>(null);
@@ -36,6 +37,7 @@ export default function PracticaChat({ businessId, businessNombre }: Props) {
     setLoading(true);
     setError(null);
     setGuia(null);
+    setGuiaDismissed(false);
     setOpciones(null);
 
     const newMessages: Msg[] = [...messages, { role: "user", content: text }];
@@ -162,13 +164,17 @@ export default function PracticaChat({ businessId, businessNombre }: Props) {
         )}
       </div>
 
-      {etapa === "guiado" && guia && (
-        <div className="rounded-xl border border-verde/30 bg-verde/10 p-3 text-sm text-cafe">
-          <p className="text-[10px] uppercase tracking-widest text-verde font-medium mb-1">
-            Coach
-          </p>
-          {guia}
-        </div>
+      {etapa === "guiado" && guia && !guiaDismissed && (
+        <GuiaModal guia={guia} onClose={() => setGuiaDismissed(true)} />
+      )}
+
+      {etapa === "guiado" && guia && guiaDismissed && (
+        <button
+          onClick={() => setGuiaDismissed(false)}
+          className="text-xs text-verde underline underline-offset-4 hover:text-verde/80 transition self-start"
+        >
+          Ver ayuda del coach
+        </button>
       )}
 
       {etapa === "multiple" && opciones && opciones.length > 0 && (
@@ -228,6 +234,53 @@ export default function PracticaChat({ businessId, businessNombre }: Props) {
           className="rounded-full bg-cafe text-crema px-5 py-2 text-sm font-medium hover:bg-cafe/90 disabled:opacity-60 transition"
         >
           {finishing ? "Calificando…" : "Terminar y calificar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GuiaModal({
+  guia,
+  onClose,
+}: {
+  guia: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-cafe/40 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-crema border border-border rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-verde font-medium">
+              Coach
+            </p>
+            <h4 className="text-lg font-semibold text-cafe mt-0.5">
+              Ayuda para tu próxima respuesta
+            </h4>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-cafe/60 hover:text-cafe text-2xl leading-none px-2"
+            aria-label="Cerrar guía"
+          >
+            ×
+          </button>
+        </div>
+        <p className="text-sm text-cafe/85 leading-relaxed whitespace-pre-wrap">
+          {guia}
+        </p>
+        <button
+          onClick={onClose}
+          className="w-full mt-2 rounded-full bg-verde text-crema py-2 text-sm font-medium hover:bg-verde/90 transition"
+        >
+          Entendido, escribo mi respuesta
         </button>
       </div>
     </div>

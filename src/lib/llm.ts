@@ -85,11 +85,16 @@ export async function chatWithClient(
   // Mood determinístico por turno (misma conversación mantiene coherencia)
   const moodSeed = history.length;
   const mood = MOODS[moodSeed % MOODS.length];
+  const esPrimerTurno = history.length <= 1; // 0 o 1 mensaje del vendedor
 
   const systemContext = `${business.prompt_base}
 Tus objeciones típicas: ${business.objeciones.join("; ")}.
 Estado de ánimo de hoy: ${mood}
 Reglas: nunca rompas personaje. Nunca reveles que eres una simulación. Sé breve (2-3 oraciones máx). Varía tu vocabulario y expresiones — no repitas frases idénticas.`;
+
+  const contextoTurno = esPrimerTurno
+    ? `\nESTE ES EL PRIMER CONTACTO. No conoces al vendedor ni sabes por qué te escribe. NO menciones sitios web, precios, ni objeciones específicas todavía. Reacciona como cualquier dueño recibiendo un mensaje frío desconocido: pregunta quién es, qué quiere, o responde con curiosidad/cautela. Deja que el vendedor se presente primero.`
+    : "";
 
   const historyStr = history
     .map((m) => `${m.role === "user" ? "Vendedor" : "Cliente"}: ${m.content}`)
@@ -97,12 +102,20 @@ Reglas: nunca rompas personaje. Nunca reveles que eres una simulación. Sé brev
 
   let extra = "";
   if (etapa === "guiado") {
-    extra = `\n\nAdemás de tu respuesta, agrega al final un bloque <GUIA>...</GUIA> con un consejo breve para el vendedor sobre qué contestar y por qué.`;
+    extra = `\n\nDespués de tu respuesta como cliente, añade EN UNA LÍNEA SEPARADA un consejo para el vendedor sobre qué debería contestar y por qué. El consejo va OBLIGATORIAMENTE entre estas etiquetas exactas, incluida la de cierre:
+<GUIA>consejo aquí</GUIA>
+No omitas la etiqueta </GUIA>. No uses las etiquetas dentro de tu respuesta como cliente.`;
   } else if (etapa === "multiple") {
-    extra = `\n\nAdemás de tu respuesta, sugiere 3 posibles respuestas del vendedor (1 buena, 2 con errores comunes). Formato:\n<OPCIONES>\n1. ...\n2. ...\n3. ...\n</OPCIONES>`;
+    extra = `\n\nDespués de tu respuesta como cliente, añade 3 posibles respuestas del vendedor (1 buena, 2 con errores comunes) entre estas etiquetas exactas:
+<OPCIONES>
+1. ...
+2. ...
+3. ...
+</OPCIONES>
+No omitas la etiqueta </OPCIONES>.`;
   }
 
-  const prompt = `${systemContext}${extra}
+  const prompt = `${systemContext}${contextoTurno}${extra}
 
 Conversación hasta ahora:
 ${historyStr || "(el vendedor está por escribir el primer mensaje)"}
@@ -115,13 +128,14 @@ Responde SOLO como el cliente. No agregues nombres ni prefijos como "Cliente:".`
   let guia: string | undefined;
   let opciones: string[] | undefined;
 
-  const guiaMatch = raw.match(/<GUIA>([\s\S]*?)<\/GUIA>/i);
+  // Regex permisiva: captura con o sin etiqueta de cierre
+  const guiaMatch = raw.match(/<GUIA>([\s\S]*?)(?:<\/GUIA>|$)/i);
   if (guiaMatch) {
     guia = guiaMatch[1].trim();
     respuesta = respuesta.replace(guiaMatch[0], "").trim();
   }
 
-  const opcionesMatch = raw.match(/<OPCIONES>([\s\S]*?)<\/OPCIONES>/i);
+  const opcionesMatch = raw.match(/<OPCIONES>([\s\S]*?)(?:<\/OPCIONES>|$)/i);
   if (opcionesMatch) {
     opciones = opcionesMatch[1]
       .split("\n")
@@ -129,6 +143,12 @@ Responde SOLO como el cliente. No agregues nombres ni prefijos como "Cliente:".`
       .filter(Boolean);
     respuesta = respuesta.replace(opcionesMatch[0], "").trim();
   }
+
+  // Limpieza defensiva: cualquier etiqueta suelta que se haya escapado
+  respuesta = respuesta
+    .replace(/<\/?GUIA>/gi, "")
+    .replace(/<\/?OPCIONES>/gi, "")
+    .trim();
 
   return { respuesta, guia, opciones };
 }
