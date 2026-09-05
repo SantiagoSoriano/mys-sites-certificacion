@@ -6,7 +6,10 @@ import Superpowers from "./Superpowers";
 
 export const dynamic = "force-dynamic";
 
-const dateFmt = new Intl.DateTimeFormat("es-MX", { dateStyle: "short" });
+const dateFmt = new Intl.DateTimeFormat("es-MX", {
+  day: "2-digit",
+  month: "2-digit",
+});
 
 export default async function AdminVendedoresPage() {
   const { supabase, user } = await requireAdmin();
@@ -14,7 +17,7 @@ export default async function AdminVendedoresPage() {
   const { data: vendedores } = await supabase
     .from("users")
     .select(
-      `id, nombre, email, rol, last_login_city, last_login_at,
+      `id, nombre, email, rol, last_login_at,
        enrollments(dia_actual, estado),
        certifications(fecha_certificacion),
        prospects:prospects!prospects_asignado_a_fkey(id),
@@ -27,7 +30,6 @@ export default async function AdminVendedoresPage() {
     nombre: string;
     email: string;
     rol: "vendedor" | "admin";
-    last_login_city: string | null;
     last_login_at: string | null;
     enrollments: { dia_actual: number; estado: string } | null;
     certifications: { fecha_certificacion: string } | null;
@@ -49,18 +51,16 @@ export default async function AdminVendedoresPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-white/60 overflow-x-auto">
-        <table className="w-full text-sm min-w-[720px]">
+      <div className="rounded-2xl border border-border bg-white/60">
+        <table className="w-full text-sm">
           <thead className="text-left text-[10px] uppercase tracking-widest text-cafe/60 bg-crema/60">
             <tr>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Rol</th>
-              <th className="px-4 py-3 font-medium">Curso</th>
-              <th className="px-4 py-3 font-medium">Cert</th>
-              <th className="px-4 py-3 font-medium">Prospectos</th>
-              <th className="px-4 py-3 font-medium">Cobrada</th>
-              <th className="px-4 py-3 font-medium">Último ingreso</th>
-              <th className="px-4 py-3 font-medium text-right">Acciones</th>
+              <th className="px-3 py-3 font-medium">Nombre</th>
+              <th className="px-3 py-3 font-medium">Curso</th>
+              <th className="px-3 py-3 font-medium">Prosp.</th>
+              <th className="px-3 py-3 font-medium">Cobrada</th>
+              <th className="px-3 py-3 font-medium">Ingreso</th>
+              <th className="px-3 py-3 font-medium text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -68,56 +68,49 @@ export default async function AdminVendedoresPage() {
               const totalCobrada = v.commissions
                 .filter((c) => c.estado === "pagado_efectivo")
                 .reduce((s, c) => s + Number(c.monto), 0);
+              const dia = v.enrollments?.dia_actual;
+              const cert = !!v.certifications;
+              const cursoLabel = dia
+                ? `${dia}/8${cert ? " ✓" : ""}`
+                : cert
+                ? "✓"
+                : "—";
               return (
                 <tr key={v.id} className="border-t border-border">
-                  <td className="px-4 py-3">
-                    <div className="text-cafe font-medium">{v.nombre}</div>
-                    <div className="text-xs text-cafe/60">{v.email}</div>
+                  <td className="px-3 py-3">
+                    <div className="text-cafe font-medium flex items-center gap-2">
+                      <span className="truncate">{v.nombre}</span>
+                      {v.rol === "admin" && (
+                        <span className="text-[9px] uppercase tracking-widest text-terracota bg-terracota/10 px-1.5 py-0.5 rounded-full">
+                          admin
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-cafe/60 truncate">{v.email}</div>
                   </td>
-                  <td className="px-4 py-3">
-                    {v.rol === "admin" ? (
-                      <span className="text-xs font-medium text-terracota">Admin</span>
-                    ) : (
-                      <span className="text-xs text-cafe/70">Vendedor</span>
+                  <td className="px-3 py-3">
+                    <span className={cert ? "text-verde font-medium" : "text-cafe/85"}>
+                      {cursoLabel}
+                    </span>
+                    {v.enrollments?.estado === "archivado" && (
+                      <div className="text-[9px] text-cafe/50">archivado</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-cafe/85">
-                    {v.enrollments ? (
-                      <>
-                        <span>{v.enrollments.dia_actual}/8</span>
-                        {v.enrollments.estado === "archivado" && (
-                          <span className="ml-2 text-xs text-cafe/50">(archivado)</span>
-                        )}
-                      </>
-                    ) : "—"}
+                  <td className="px-3 py-3 text-cafe/85">{v.prospects.length}</td>
+                  <td className="px-3 py-3 text-cafe font-semibold whitespace-nowrap">
+                    {pesos(totalCobrada)}
                   </td>
-                  <td className="px-4 py-3">
-                    {v.certifications ? (
-                      <span className="text-xs text-verde font-medium">✓ Certificado</span>
-                    ) : (
-                      <span className="text-xs text-cafe/50">—</span>
-                    )}
+                  <td className="px-3 py-3 text-xs text-cafe/70 whitespace-nowrap">
+                    {v.last_login_at ? dateFmt.format(new Date(v.last_login_at)) : "—"}
                   </td>
-                  <td className="px-4 py-3 text-cafe/85">{v.prospects.length}</td>
-                  <td className="px-4 py-3 text-cafe font-semibold">{pesos(totalCobrada)}</td>
-                  <td className="px-4 py-3 text-xs text-cafe/70">
-                    {v.last_login_at ? (
-                      <>
-                        {dateFmt.format(new Date(v.last_login_at))}
-                        {v.last_login_city && (
-                          <div className="text-[10px] text-cafe/50">{v.last_login_city}</div>
-                        )}
-                      </>
-                    ) : "nunca"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-3 text-right">
                     <div className="flex justify-end items-center gap-3">
                       {v.rol !== "admin" && (
                         <Superpowers
                           userId={v.id}
                           userName={v.nombre}
-                          isCertified={!!v.certifications}
-                          currentDay={v.enrollments?.dia_actual ?? 1}
+                          isCertified={cert}
+                          currentDay={dia ?? 1}
                           archived={v.enrollments?.estado === "archivado"}
                         />
                       )}
@@ -140,7 +133,7 @@ export default async function AdminVendedoresPage() {
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-cafe/60">
+                <td colSpan={6} className="px-4 py-8 text-center text-cafe/60">
                   Aún no hay vendedores registrados.
                 </td>
               </tr>
