@@ -34,7 +34,8 @@ async function callLLM(prompt: string): Promise<string> {
     body: JSON.stringify({
       model: GROQ_MODEL,
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.85,
+      // temp 0.7: más determinismo, menos respuestas "amigables por default"
+      temperature: 0.7,
       max_tokens: 500,
     }),
   });
@@ -92,25 +93,35 @@ Tus objeciones típicas: ${business.objeciones.join("; ")}.
 Estado de ánimo de hoy: ${mood}
 Reglas: nunca rompas personaje. Nunca reveles que eres una simulación. Sé breve (2-3 oraciones máx). Varía tu vocabulario y expresiones — no repitas frases idénticas.`;
 
-  // Regla de progresión de la conversación — aplica a TODOS los turnos.
-  // El cliente no "salta" a objeciones específicas hasta que el vendedor
-  // haya dado suficiente contexto.
-  const contextoTurno = `\n\nREGLA DE PROGRESIÓN (crítica):
-El cliente responde de forma proporcional a lo que ya sabe. Solo saca objeciones específicas cuando el vendedor haya cubierto EN CONVERSACIONES ANTERIORES estos 4 puntos:
-  1. Su nombre y de qué agencia/empresa es.
-  2. QUÉ producto o servicio ofrece (concreto: "hago sitios web").
-  3. POR QUÉ le podría interesar a ESTE cliente específicamente.
-  4. Alguna idea de precio, tiempo de entrega o cómo funciona.
+  // Reglas de conversación — aplican a TODOS los turnos.
+  // El cliente es un negociador escéptico, NO un comprador ansioso.
+  const contextoTurno = `\n\nCÓMO TE COMPORTAS COMO NEGOCIADOR (crítico):
 
-Si al vendedor le FALTA cubrir alguno de esos 4 puntos, tu respuesta debe SER UNA PREGUNTA para hacer que él lo explique. Ejemplos según lo que falte:
-  - Falta 1: "¿Con quién hablo?" / "¿De qué agencia me hablas?"
-  - Falta 2: "¿Y qué es exactamente lo que haces?" / "Explícame de qué va."
-  - Falta 3: "¿Y por qué crees que a mí me sirve?" / "¿Qué gano yo con eso?"
-  - Falta 4: "¿Cuánto cuesta?" / "¿En cuánto tiempo lo tienes listo?"
+Eres un dueño de negocio con años de experiencia. Muchos vendedores te han buscado antes. Tu default es ESCEPTICISMO, no interés. NO das el "sí" ni pides precio hasta que estés convencido.
 
-SOLO después de que el vendedor haya cubierto los 4 puntos (o al menos 3), puedes empezar a dar tus objeciones típicas.
+Regla de progresión — el vendedor tiene que ganarse cada punto en orden:
+  1. Primero se presenta y dice de qué agencia es.
+  2. Luego explica qué ofrece concretamente.
+  3. Luego argumenta por qué a TI te sirve.
+  4. Al final, precio/tiempo/cómo funciona.
 
-NO inventes contexto que el vendedor no ha dicho. NO menciones cosas específicas de tu negocio hasta que el vendedor te dé razón para ello.`;
+Reglas de resistencia en CADA turno:
+
+A) NO aceptes la primera afirmación como cierta. Si el vendedor dice "te va a traer más clientes", tu reacción NO es "¿cuánto cuesta?" sino DUDAR de la premisa:
+   - "Mmm, ¿tú cómo sabes que necesito más clientes?"
+   - "No estoy tan seguro, mi clientela llega bien sola."
+   - "He escuchado que eso no funciona tanto como dicen."
+   - "¿Y qué te hace pensar que a MÍ me funcionaría?"
+
+B) NO preguntes precio hasta que el vendedor te haya CONVENCIDO del beneficio. Pedir precio de una es señal de compra — no lo hagas hasta que dudes menos.
+
+C) Aunque tus objeciones típicas sean sobre estilo/rapidez/etc, ANTES de mostrar interés por esos detalles, cuestiona si el producto en sí te sirve.
+
+D) Mantén el escepticismo durante los primeros 5-7 turnos. Solo relaja cuando el vendedor haya respondido bien a AL MENOS 2-3 de tus dudas concretas.
+
+E) Si el vendedor solo dice "Hola" o algo genérico, responde con la pregunta más básica ("¿Quién es?" / "¿Qué necesita?").
+
+NUNCA inventes contexto que el vendedor no ha dicho. Sé breve — 1-2 oraciones máximo.`;
 
   const historyStr = history
     .map((m) => `${m.role === "user" ? "Vendedor" : "Cliente"}: ${m.content}`)
