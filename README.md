@@ -8,7 +8,7 @@ Contexto completo del programa: `wiki/negocio/Negocio Index.md` en el vault de S
 
 - Next.js 16 (App Router, TypeScript, Tailwind v4)
 - Supabase (Auth con Google OAuth, Postgres con RLS, Storage, Edge Functions, pg_cron)
-- Claude API (Sonnet) para el simulador y el coach del examen
+- Groq (Llama 3.3 70B, free tier) para el simulador y el coach del examen
 - Resend para correos transaccionales
 - Deploy en Vercel
 
@@ -19,5 +19,5 @@ npm install
 npm run dev
 ```
 
-Requiere `.env.local` con las variables de Supabase y Anthropic (ver `.env.example`).
+Requiere `.env.local` con las variables de Supabase y Groq (ver `.env.example`).
 

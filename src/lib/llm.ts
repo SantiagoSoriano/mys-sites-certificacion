@@ -1,6 +1,6 @@
-// Wrapper for Google Gemini API (free tier).
-// If GEMINI_API_KEY is missing, returns a mock so the app still works
-// during development without the key.
+// LLM wrapper — usa Groq (Llama 3.3 70B, free tier generoso).
+// Si GROQ_API_KEY no está seteada, devuelve un mock para que la app
+// siga funcionando durante desarrollo sin la key.
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -8,42 +8,43 @@ export type ChatMessage = {
 };
 
 export type ClientTurn = {
-  respuesta: string; // What the simulated client says back
-  guia?: string; // Only in guided stage: coach hint for the sales rep
-  opciones?: string[]; // Only in multiple-choice stage: 3 possible replies
+  respuesta: string; // Lo que el cliente simulado contesta
+  guia?: string; // Solo en etapa "guiado": consejo del coach al vendedor
+  opciones?: string[]; // Solo en etapa "multiple": 3 posibles respuestas
 };
 
-const GEMINI_MODEL = "gemini-2.0-flash";
-const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-async function callGemini(prompt: string): Promise<string> {
-  const key = process.env.GEMINI_API_KEY;
+async function callLLM(prompt: string): Promise<string> {
+  const key = process.env.GROQ_API_KEY;
   if (!key) {
-    return "[SIMULADOR EN DEMO] Estoy pensando, pero el simulador necesita la API de Gemini activada para responder de verdad. Habla con Santiago para que la enchufe.";
+    return "[SIMULADOR EN DEMO] Estoy pensando, pero el simulador necesita la GROQ_API_KEY activada para responder de verdad. Habla con Santiago para que la enchufe.";
   }
 
-  const url = `${API_BASE}/${GEMINI_MODEL}:generateContent?key=${key}`;
-  const res = await fetch(url, {
+  const res = await fetch(GROQ_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.85,
-        maxOutputTokens: 400,
-      },
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.85,
+      max_tokens: 500,
     }),
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Gemini ${res.status}: ${errText.slice(0, 200)}`);
+    throw new Error(`Groq ${res.status}: ${errText.slice(0, 200)}`);
   }
 
   const data = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    choices?: { message?: { content?: string } }[];
   };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  const text = data.choices?.[0]?.message?.content ?? "";
   return text.trim();
 }
 
@@ -57,8 +58,8 @@ type Business = {
 };
 
 /**
- * Generates the next turn of the simulated client.
- * Stage tweaks: guiado adds a <guia>, multiple adds 3 options.
+ * Genera el próximo turno del cliente simulado.
+ * Etapa guiado añade <GUIA>...</GUIA>. Etapa multiple añade <OPCIONES>...</OPCIONES>.
  */
 export async function chatWithClient(
   business: Business,
@@ -87,9 +88,8 @@ ${historyStr || "(el vendedor está por escribir el primer mensaje)"}
 
 Responde SOLO como el cliente. No agregues nombres ni prefijos como "Cliente:".`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callLLM(prompt);
 
-  // Parse guía / opciones if present
   let respuesta = raw;
   let guia: string | undefined;
   let opciones: string[] | undefined;
@@ -113,7 +113,7 @@ Responde SOLO como el cliente. No agregues nombres ni prefijos como "Cliente:".`
 }
 
 /**
- * Coach that evaluates the whole conversation after the session ends.
+ * Coach que evalúa la conversación al terminar la sesión.
  */
 export async function coachEvaluate(
   business: Business,
@@ -133,11 +133,11 @@ Da:
 1. Un SCORE del 1 al 10 (número entero) considerando: apertura, escucha activa, manejo de objeciones, claridad del pitch, cierre.
 2. Un FEEDBACK breve (3-4 oraciones máximo) con lo mejor que hizo y 1-2 cosas concretas a mejorar.
 
-Formato de respuesta:
+Formato de respuesta EXACTO:
 SCORE: <número>
 FEEDBACK: <texto>`;
 
-  const raw = await callGemini(prompt);
+  const raw = await callLLM(prompt);
   const scoreMatch = raw.match(/SCORE:\s*(\d+)/i);
   const feedbackMatch = raw.match(/FEEDBACK:\s*([\s\S]*)/i);
 

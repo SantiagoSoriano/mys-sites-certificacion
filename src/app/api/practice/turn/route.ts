@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { chatWithClient, type ChatMessage } from "@/lib/gemini";
+import { chatWithClient, type ChatMessage } from "@/lib/llm";
 import { etapaDelDia } from "@/lib/db/curso";
 
 export const runtime = "nodejs";
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ ok: true, turn, etapa });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "gemini_error";
+    const msg = e instanceof Error ? e.message : "llm_error";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
