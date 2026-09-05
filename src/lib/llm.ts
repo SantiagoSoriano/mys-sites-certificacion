@@ -87,22 +87,30 @@ export async function chatWithClient(
   // Mood determinístico por turno (misma conversación mantiene coherencia)
   const moodSeed = history.length;
   const mood = MOODS[moodSeed % MOODS.length];
-  const esPrimerTurno = history.length <= 1; // 0 o 1 mensaje del vendedor
-
   const systemContext = `${business.prompt_base}
 Tus objeciones típicas: ${business.objeciones.join("; ")}.
 Estado de ánimo de hoy: ${mood}
 Reglas: nunca rompas personaje. Nunca reveles que eres una simulación. Sé breve (2-3 oraciones máx). Varía tu vocabulario y expresiones — no repitas frases idénticas.`;
 
-  const contextoTurno = esPrimerTurno
-    ? `\n\nIMPORTANTE — PRIMER CONTACTO:
-- No conoces al vendedor. No sabes que existe MyS Sites. No sabes que vende sitios web.
-- El vendedor SOLO ha escrito lo que se ve en la conversación abajo. NO inventes que dijo más cosas ni que "cerró una venta" ni nada.
-- Responde en 1-2 oraciones máximo, corto y natural, como un dueño recibiendo un mensaje desconocido:
-  * Si solo dijo "Hola" o "Buenos días" → pregunta con quién habla o qué necesita.
-  * Si se presentó pero no dijo de qué va → pídele que te explique.
-- NO menciones sitios web, precios, ni objeciones específicas todavía. Deja que el vendedor te explique de qué va antes de reaccionar con dudas.`
-    : "";
+  // Regla de progresión de la conversación — aplica a TODOS los turnos.
+  // El cliente no "salta" a objeciones específicas hasta que el vendedor
+  // haya dado suficiente contexto.
+  const contextoTurno = `\n\nREGLA DE PROGRESIÓN (crítica):
+El cliente responde de forma proporcional a lo que ya sabe. Solo saca objeciones específicas cuando el vendedor haya cubierto EN CONVERSACIONES ANTERIORES estos 4 puntos:
+  1. Su nombre y de qué agencia/empresa es.
+  2. QUÉ producto o servicio ofrece (concreto: "hago sitios web").
+  3. POR QUÉ le podría interesar a ESTE cliente específicamente.
+  4. Alguna idea de precio, tiempo de entrega o cómo funciona.
+
+Si al vendedor le FALTA cubrir alguno de esos 4 puntos, tu respuesta debe SER UNA PREGUNTA para hacer que él lo explique. Ejemplos según lo que falte:
+  - Falta 1: "¿Con quién hablo?" / "¿De qué agencia me hablas?"
+  - Falta 2: "¿Y qué es exactamente lo que haces?" / "Explícame de qué va."
+  - Falta 3: "¿Y por qué crees que a mí me sirve?" / "¿Qué gano yo con eso?"
+  - Falta 4: "¿Cuánto cuesta?" / "¿En cuánto tiempo lo tienes listo?"
+
+SOLO después de que el vendedor haya cubierto los 4 puntos (o al menos 3), puedes empezar a dar tus objeciones típicas.
+
+NO inventes contexto que el vendedor no ha dicho. NO menciones cosas específicas de tu negocio hasta que el vendedor te dé razón para ello.`;
 
   const historyStr = history
     .map((m) => `${m.role === "user" ? "Vendedor" : "Cliente"}: ${m.content}`)
