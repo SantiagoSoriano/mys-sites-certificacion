@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/db/queries";
 import TopNav from "@/components/TopNav";
+import NewProspectButton from "./NewProspectButton";
+import AssignButton from "./AssignButton";
 
 export const dynamic = "force-dynamic";
 
@@ -15,28 +17,62 @@ const ESTADO_LABELS: Record<string, { label: string; color: string }> = {
   liberado: { label: "Liberado", color: "bg-verde/15 text-verde" },
 };
 
+type ProspectRow = {
+  id: string;
+  negocio: string;
+  giro: string | null;
+  ciudad: string | null;
+  contacto_nombre: string | null;
+  contacto_tel: string | null;
+  estado: string;
+  asignado_desde: string | null;
+  ultimo_seguimiento: string | null;
+  vendedor: { nombre: string } | null;
+};
+
+type VendedorItem = {
+  id: string;
+  nombre: string;
+  prospectosActivos: number;
+  certificado: boolean;
+};
+
 export default async function AdminProspectosPage() {
   const { supabase, user } = await requireAdmin();
 
-  const { data: prospects } = await supabase
-    .from("prospects")
-    .select(
-      "id, negocio, giro, ciudad, contacto_nombre, contacto_tel, estado, asignado_desde, ultimo_seguimiento, vendedor:users!prospects_asignado_a_fkey(nombre)"
-    )
-    .order("created_at", { ascending: false });
+  const [prospectsRes, vendedoresRes] = await Promise.all([
+    supabase
+      .from("prospects")
+      .select(
+        "id, negocio, giro, ciudad, contacto_nombre, contacto_tel, estado, asignado_desde, ultimo_seguimiento, vendedor:users!prospects_asignado_a_fkey(nombre)"
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("users")
+      .select(
+        "id, nombre, rol, certifications(user_id), prospects:prospects!prospects_asignado_a_fkey(id, estado)"
+      )
+      .eq("rol", "vendedor")
+      .order("nombre"),
+  ]);
 
-  const rows = (prospects ?? []) as unknown as Array<{
-    id: string;
-    negocio: string;
-    giro: string | null;
-    ciudad: string | null;
-    contacto_nombre: string | null;
-    contacto_tel: string | null;
-    estado: string;
-    asignado_desde: string | null;
-    ultimo_seguimiento: string | null;
-    vendedor: { nombre: string } | null;
-  }>;
+  const rows = (prospectsRes.data ?? []) as unknown as ProspectRow[];
+
+  const vendedores: VendedorItem[] = (
+    (vendedoresRes.data ?? []) as unknown as Array<{
+      id: string;
+      nombre: string;
+      certifications: { user_id: string } | null;
+      prospects: { id: string; estado: string }[];
+    }>
+  ).map((v) => ({
+    id: v.id,
+    nombre: v.nombre,
+    prospectosActivos: v.prospects.filter((p) =>
+      ["asignado", "en_venta"].includes(p.estado)
+    ).length,
+    certificado: !!v.certifications,
+  }));
 
   const libres = rows.filter((p) => ["disponible", "liberado"].includes(p.estado));
   const asignados = rows.filter((p) => ["asignado", "en_venta"].includes(p.estado));
@@ -46,19 +82,38 @@ export default async function AdminProspectosPage() {
     <main className="flex-1 px-6 py-10 max-w-5xl mx-auto w-full space-y-8">
       <TopNav user={user} variant="admin" />
 
-      <div>
-        <Link href="/admin" className="text-xs uppercase tracking-widest text-terracota hover:opacity-80">
-          ← Panel admin
-        </Link>
-        <h2 className="text-2xl font-semibold text-cafe mt-2">Prospectos</h2>
-        <p className="text-sm text-cafe/70 mt-1">
-          {rows.length} en total. La integración con el Mapa (Flask/Turso) vendrá en el siguiente bloque.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/admin" className="text-xs uppercase tracking-widest text-terracota hover:opacity-80">
+            ← Panel admin
+          </Link>
+          <h2 className="text-2xl font-semibold text-cafe mt-2">Prospectos</h2>
+          <p className="text-sm text-cafe/70 mt-1">
+            {rows.length} en total. La integración con el Mapa (Flask/Turso) viene después.
+          </p>
+        </div>
+        <NewProspectButton />
       </div>
 
-      <Section title="Libres" rows={libres} accent="verde" empty="No hay prospectos libres para asignar." />
-      <Section title="Asignados / en venta" rows={asignados} accent="terracota" empty="Sin prospectos activos." />
-      <Section title="Cerrados" rows={cerrados} accent="cafe" empty="Aún sin cierres." />
+      <Section
+        title="Libres"
+        rows={libres}
+        accent="verde"
+        empty="No hay prospectos libres para asignar."
+        vendedores={vendedores}
+      />
+      <Section
+        title="Asignados / en venta"
+        rows={asignados}
+        accent="terracota"
+        empty="Sin prospectos activos."
+      />
+      <Section
+        title="Cerrados"
+        rows={cerrados}
+        accent="cafe"
+        empty="Aún sin cierres."
+      />
     </main>
   );
 }
@@ -68,21 +123,13 @@ function Section({
   rows,
   accent,
   empty,
+  vendedores,
 }: {
   title: string;
-  rows: Array<{
-    id: string;
-    negocio: string;
-    giro: string | null;
-    ciudad: string | null;
-    contacto_nombre: string | null;
-    estado: string;
-    asignado_desde: string | null;
-    ultimo_seguimiento: string | null;
-    vendedor: { nombre: string } | null;
-  }>;
+  rows: ProspectRow[];
   accent: "verde" | "terracota" | "cafe";
   empty: string;
+  vendedores?: VendedorItem[];
 }) {
   const accentClass =
     accent === "verde" ? "text-verde" : accent === "terracota" ? "text-terracota" : "text-cafe";
@@ -105,6 +152,7 @@ function Section({
                 <th className="px-4 py-3 font-medium">Vendedor</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Últ. seg.</th>
+                {vendedores && <th className="px-4 py-3 font-medium text-right">Acción</th>}
               </tr>
             </thead>
             <tbody>
@@ -129,6 +177,11 @@ function Section({
                     <td className="px-4 py-3 text-xs text-cafe/60">
                       {p.ultimo_seguimiento ? dateFmt.format(new Date(p.ultimo_seguimiento)) : "—"}
                     </td>
+                    {vendedores && (
+                      <td className="px-4 py-3 text-right">
+                        <AssignButton prospectId={p.id} vendedores={vendedores} />
+                      </td>
+                    )}
                   </tr>
                 );
               })}

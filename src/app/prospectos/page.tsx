@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/db/queries";
 import TopNav from "@/components/TopNav";
+import ProspectActions from "./ProspectActions";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +23,23 @@ export default async function ProspectosPage() {
   const { data: prospects } = await supabase
     .from("prospects")
     .select(
-      "id, negocio, contacto_nombre, contacto_tel, giro, ciudad, estado, asignado_desde, ultimo_seguimiento"
+      "id, negocio, contacto_nombre, contacto_tel, giro, ciudad, estado, asignado_desde, ultimo_seguimiento, deals(id, estado)"
     )
     .eq("asignado_a", user.id)
     .order("asignado_desde", { ascending: false });
 
-  const rows = prospects ?? [];
+  const rows = (prospects ?? []) as unknown as Array<{
+    id: string;
+    negocio: string;
+    contacto_nombre: string | null;
+    contacto_tel: string | null;
+    giro: string | null;
+    ciudad: string | null;
+    estado: string;
+    asignado_desde: string | null;
+    ultimo_seguimiento: string | null;
+    deals: { id: string; estado: string }[];
+  }>;
 
   return (
     <main className="flex-1 px-6 py-10 max-w-4xl mx-auto w-full space-y-8">
@@ -48,8 +60,8 @@ export default async function ProspectosPage() {
             Todavía no tienes prospectos asignados
           </h3>
           <p className="text-sm text-cafe/70 max-w-md mx-auto">
-            Los prospectos se te asignan cuando estés certificado. Termina
-            primero el curso y aprueba el examen.
+            Los prospectos te los asigna Santiago cuando estés listo. Termina
+            el curso para prepararte.
           </p>
           <Link
             href="/curso"
@@ -61,13 +73,14 @@ export default async function ProspectosPage() {
       ) : (
         <div className="space-y-3">
           {rows.map((p) => {
-            const est = ESTADO_LABELS[p.estado as string] ?? {
+            const est = ESTADO_LABELS[p.estado] ?? {
               label: p.estado,
               color: "bg-cafe/10 text-cafe",
             };
+            const yaTieneDeal = p.deals.length > 0;
             return (
               <div
-                key={p.id as string}
+                key={p.id}
                 className="rounded-2xl border border-border bg-white/60 p-5 space-y-3"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -91,7 +104,7 @@ export default async function ProspectosPage() {
                 {p.contacto_nombre && (
                   <p className="text-sm text-cafe/85">
                     <strong className="text-cafe">Contacto:</strong>{" "}
-                    {p.contacto_nombre as string}
+                    {p.contacto_nombre}
                     {p.contacto_tel ? ` · ${p.contacto_tel}` : ""}
                   </p>
                 )}
@@ -100,33 +113,27 @@ export default async function ProspectosPage() {
                   <span>
                     Asignado:{" "}
                     {p.asignado_desde
-                      ? dateFmt.format(new Date(p.asignado_desde as string))
+                      ? dateFmt.format(new Date(p.asignado_desde))
                       : "—"}
                   </span>
                   <span>
                     Último seguimiento:{" "}
                     {p.ultimo_seguimiento
-                      ? dateFmt.format(
-                          new Date(p.ultimo_seguimiento as string)
-                        )
+                      ? dateFmt.format(new Date(p.ultimo_seguimiento))
                       : "sin registrar"}
                   </span>
+                  {yaTieneDeal && (
+                    <span className="text-terracota font-medium">
+                      Deal creado
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <button className="text-xs rounded-full bg-verde text-crema px-4 py-1.5 hover:bg-verde/90 transition">
-                    Reportar seguimiento
-                  </button>
-                  <button className="text-xs rounded-full bg-terracota text-crema px-4 py-1.5 hover:bg-terracota-oscuro transition">
-                    Cliente listo para pagar
-                  </button>
-                  <button className="text-xs rounded-full border border-border text-cafe px-4 py-1.5 hover:bg-white/60 transition">
-                    Cerrado sin venta
-                  </button>
-                </div>
-                <p className="text-[10px] text-cafe/40 italic">
-                  Acciones aún no conectadas — vienen con el flujo de deals.
-                </p>
+                <ProspectActions
+                  prospectId={p.id}
+                  estado={p.estado}
+                  yaTieneDeal={yaTieneDeal}
+                />
               </div>
             );
           })}
