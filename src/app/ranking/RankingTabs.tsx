@@ -4,8 +4,8 @@ import { useState } from "react";
 import type {
   LeaderCertificado,
   LeaderEntrenamiento,
-} from "@/lib/db/queries";
-import { pesos } from "@/lib/db/queries";
+} from "@/lib/db/types";
+import { pesos } from "@/lib/format";
 
 type Tab = "entrenamiento" | "certificados";
 
