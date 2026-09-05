@@ -51,7 +51,12 @@ export default async function AdminPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-cafe">Últimos accesos</h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold text-cafe">Últimos accesos</h2>
+          <span className="text-[10px] text-cafe/50">
+            Ciudad estimada por IP — puede diferir de la ubicación real
+          </span>
+        </div>
         {recentLogins.length === 0 ? (
           <p className="text-sm text-cafe/60">
             Nadie ha entrado desde que se activó el tracking de geolocation.
@@ -62,7 +67,7 @@ export default async function AdminPage() {
               <thead className="text-left text-[10px] uppercase tracking-widest text-cafe/60 bg-crema/60">
                 <tr>
                   <th className="px-4 py-3 font-medium">Vendedor</th>
-                  <th className="px-4 py-3 font-medium">Ciudad</th>
+                  <th className="px-4 py-3 font-medium">Ciudad (IP)</th>
                   <th className="px-4 py-3 font-medium">País</th>
                   <th className="px-4 py-3 font-medium">Último ingreso</th>
                 </tr>
