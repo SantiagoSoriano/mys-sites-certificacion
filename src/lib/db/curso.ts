@@ -58,6 +58,29 @@ export function businessOfDay(
   return businesses[idx];
 }
 
+export async function getAllBusinesses(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<BusinessSim[]> {
+  const { data } = await supabase
+    .from("businesses_sim")
+    .select("id, giro, nombre_ficticio, dificultad, personalidad, objeciones, prompt_base")
+    .order("dificultad")
+    .order("nombre_ficticio");
+  return (data ?? []) as BusinessSim[];
+}
+
+export async function getBusinessById(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: string
+): Promise<BusinessSim | null> {
+  const { data } = await supabase
+    .from("businesses_sim")
+    .select("id, giro, nombre_ficticio, dificultad, personalidad, objeciones, prompt_base")
+    .eq("id", id)
+    .maybeSingle();
+  return (data as BusinessSim | null) ?? null;
+}
+
 export async function getCursoData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string

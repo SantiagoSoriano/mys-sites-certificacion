@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/db/queries";
-import { getCursoData } from "@/lib/db/curso";
+import { getBusinessById, getCursoData } from "@/lib/db/curso";
 import TopNav from "@/components/TopNav";
 import PracticaChat from "./PracticaChat";
 
@@ -12,11 +12,27 @@ const ETAPA_LABEL: Record<string, string> = {
   libre: "Libre",
 };
 
-export default async function PracticaPage() {
+export default async function PracticaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ business_id?: string }>;
+}) {
   const { supabase, user } = await requireUser();
+  const { business_id: overrideId } = await searchParams;
   const data = await getCursoData(supabase, user.id);
 
-  if (!data.business) {
+  // Admin puede pasar ?business_id=xxx para probar cualquier negocio
+  let business = data.business;
+  let esOverride = false;
+  if (overrideId && user.rol === "admin") {
+    const override = await getBusinessById(supabase, overrideId);
+    if (override) {
+      business = override;
+      esOverride = true;
+    }
+  }
+
+  if (!business) {
     return (
       <main className="flex-1 px-6 py-10 max-w-3xl mx-auto w-full space-y-6">
         <TopNav user={user} variant={user.rol === "admin" ? "admin" : "vendedor"} />
@@ -43,10 +59,11 @@ export default async function PracticaPage() {
           ← Curso
         </Link>
         <h2 className="text-2xl font-semibold text-cafe mt-2">
-          Práctica del día {data.dia}
+          {esOverride ? "Práctica (modo admin)" : `Práctica del día ${data.dia}`}
         </h2>
         <p className="text-xs text-cafe/60 mt-1">
           Modo: {ETAPA_LABEL[data.etapa]}
+          {esOverride && " · negocio elegido manualmente"}
         </p>
       </div>
 
@@ -55,17 +72,17 @@ export default async function PracticaPage() {
           Tu cliente
         </p>
         <h3 className="text-xl font-semibold text-cafe">
-          {data.business.nombre_ficticio}
+          {business.nombre_ficticio}
         </h3>
         <p className="text-xs text-cafe/70 capitalize">
-          {data.business.giro} · {data.business.dificultad === "facil" ? "Fácil" : "Difícil"}
+          {business.giro} · {business.dificultad === "facil" ? "Fácil" : "Difícil"}
         </p>
-        <p className="text-sm text-cafe/85 mt-2">{data.business.personalidad}</p>
+        <p className="text-sm text-cafe/85 mt-2">{business.personalidad}</p>
       </div>
 
       <PracticaChat
-        businessId={data.business.id}
-        businessNombre={data.business.nombre_ficticio}
+        businessId={business.id}
+        businessNombre={business.nombre_ficticio}
       />
     </main>
   );

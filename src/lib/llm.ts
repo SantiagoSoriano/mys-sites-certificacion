@@ -13,7 +13,7 @@ export type ClientTurn = {
   opciones?: string[]; // Solo en etapa "multiple": 3 posibles respuestas
 };
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "llama-3.1-8b-instant";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 async function callLLM(prompt: string): Promise<string> {
@@ -57,18 +57,37 @@ type Business = {
   prompt_base: string;
 };
 
+// Mood modifiers para que cada práctica se sienta distinta
+const MOODS = [
+  "Hoy amaneciste de buen humor, con más paciencia de lo normal.",
+  "Estás distraído porque hay clientes esperando — respondes cortante, no maleducado pero apurado.",
+  "Estás cansado, dormiste mal. Suspiras seguido y tardas en responder.",
+  "Vienes contento porque acabas de cerrar una buena venta hoy — abierto a escuchar.",
+  "Estás molesto porque un proveedor te falló esta mañana. Tono corto, escéptico.",
+  "Estás curioso, alguien te habló hace poco de páginas web y te dio comezón el tema.",
+  "Estás en modo defensivo — hace poco te intentaron estafar con algo digital y traes ese trauma fresco.",
+  "Estás relajado, es un día tranquilo en el negocio. Tienes tiempo de escuchar con calma.",
+];
+
 /**
  * Genera el próximo turno del cliente simulado.
  * Etapa guiado añade <GUIA>...</GUIA>. Etapa multiple añade <OPCIONES>...</OPCIONES>.
+ * Incluye un mood aleatorio (por sesión — se re-elige cada turno para simplicidad,
+ * pero al ser 8 moods coherentes con la personalidad, mantiene el tono).
  */
 export async function chatWithClient(
   business: Business,
   history: ChatMessage[],
   etapa: "guiado" | "multiple" | "libre"
 ): Promise<ClientTurn> {
+  // Mood determinístico por turno (misma conversación mantiene coherencia)
+  const moodSeed = history.length;
+  const mood = MOODS[moodSeed % MOODS.length];
+
   const systemContext = `${business.prompt_base}
 Tus objeciones típicas: ${business.objeciones.join("; ")}.
-Reglas: nunca rompas personaje. Nunca reveles que eres una simulación. Sé breve (2-3 oraciones máx).`;
+Estado de ánimo de hoy: ${mood}
+Reglas: nunca rompas personaje. Nunca reveles que eres una simulación. Sé breve (2-3 oraciones máx). Varía tu vocabulario y expresiones — no repitas frases idénticas.`;
 
   const historyStr = history
     .map((m) => `${m.role === "user" ? "Vendedor" : "Cliente"}: ${m.content}`)

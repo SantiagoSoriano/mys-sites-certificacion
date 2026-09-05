@@ -34,7 +34,9 @@ export default async function ExamenPage() {
 
   const dia = (enrollmentRes.data?.dia_actual as number | undefined) ?? 1;
   const certificado = !!certRes.data;
-  const puedeExamen = dia >= 8 && !certificado;
+  const esAdmin = user.rol === "admin";
+  // Admin siempre puede ver el examen como disponible (para probarlo).
+  const puedeExamen = esAdmin || (dia >= 8 && !certificado);
   const lastAttempt = lastAttemptRes.data;
   const proximoIntento =
     lastAttempt?.proximo_intento_ts && new Date(lastAttempt.proximo_intento_ts as string) > new Date()
@@ -84,7 +86,7 @@ export default async function ExamenPage() {
       ) : puedeExamen ? (
         <div className="rounded-2xl bg-terracota text-crema p-6 sm:p-8 space-y-3">
           <p className="text-[10px] uppercase tracking-widest opacity-80 font-medium">
-            Disponible ahora
+            {esAdmin && dia < 8 ? "Vista admin — normalmente estaría bloqueado" : "Disponible ahora"}
           </p>
           <h3 className="text-2xl font-semibold">
             Estás listo para tu certificación
@@ -97,11 +99,11 @@ export default async function ExamenPage() {
             disabled
             className="rounded-full bg-crema text-terracota px-6 py-3 text-sm font-medium mt-2 disabled:opacity-70"
           >
-            Empezar (esperando IA)
+            Empezar (aún sin implementar)
           </button>
           <p className="text-[10px] opacity-70">
-            El examen usa el mismo motor de IA que el simulador — se enciende
-            en cuanto Santiago pase la API key.
+            La lógica del examen (2 partes: teórica + práctica) se implementa
+            en la siguiente iteración usando el mismo motor del simulador.
           </p>
         </div>
       ) : (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/db/queries";
-import { getCursoData, type Etapa } from "@/lib/db/curso";
+import { getAllBusinesses, getCursoData, type Etapa } from "@/lib/db/curso";
 import TopNav from "@/components/TopNav";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,12 @@ const dateFmt = new Intl.DateTimeFormat("es-MX", {
 
 export default async function CursoPage() {
   const { supabase, user } = await requireUser();
-  const data = await getCursoData(supabase, user.id);
+  const [data, allBusinesses] = await Promise.all([
+    getCursoData(supabase, user.id),
+    user.rol === "admin"
+      ? getAllBusinesses(supabase)
+      : Promise.resolve([]),
+  ]);
 
   const practicaHoyHecha = data.practicasHoy > 0;
   const etapaInfo = ETAPA_INFO[data.etapa];
@@ -96,6 +101,50 @@ export default async function CursoPage() {
           />
         )}
       </section>
+
+      {user.rol === "admin" && allBusinesses.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-lg font-semibold text-terracota">
+              Modo admin: prueba cualquier negocio
+            </h3>
+            <span className="text-xs text-cafe/60">
+              {allBusinesses.length} en catálogo
+            </span>
+          </div>
+          <p className="text-xs text-cafe/70">
+            Cada card te lleva a una práctica con ese cliente, ignorando el día
+            que te toque hoy. Solo tú (admin) ves esta sección.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {allBusinesses.map((b) => (
+              <Link
+                key={b.id}
+                href={`/curso/practica?business_id=${b.id}`}
+                className="group rounded-2xl border border-border bg-white/60 p-4 hover:bg-white/90 transition"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-widest text-cafe/60 capitalize">
+                    {b.giro}
+                  </p>
+                  <span
+                    className={`text-[10px] uppercase tracking-widest font-medium px-2 py-0.5 rounded-full ${
+                      b.dificultad === "facil"
+                        ? "bg-verde/15 text-verde"
+                        : "bg-terracota/15 text-terracota"
+                    }`}
+                  >
+                    {b.dificultad}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-cafe mt-1 group-hover:text-terracota transition">
+                  {b.nombre_ficticio}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h3 className="text-lg font-semibold text-cafe">Etapas del curso</h3>
