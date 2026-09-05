@@ -55,7 +55,39 @@ export default async function ExamenPage() {
         </p>
       </section>
 
-      {certificado ? (
+      {esAdmin ? (
+        <div className="rounded-2xl bg-terracota text-crema p-6 sm:p-8 space-y-3">
+          <p className="text-[10px] uppercase tracking-widest opacity-80 font-medium">
+            Vista admin — siempre disponible
+          </p>
+          <h3 className="text-2xl font-semibold">
+            Estás listo para tu certificación
+          </h3>
+          <p className="text-sm opacity-90 max-w-lg">
+            El examen se divide en 2 partes seguidas. Aprobar te da comisión
+            real por cada venta que cierres.
+          </p>
+          <button
+            disabled
+            className="rounded-full bg-crema text-terracota px-6 py-3 text-sm font-medium mt-2 disabled:opacity-70"
+          >
+            Empezar (aún sin implementar)
+          </button>
+          <div className="text-[10px] opacity-70 space-y-1 pt-2 border-t border-crema/20">
+            <p>La lógica del examen se implementa en la siguiente iteración.</p>
+            <p>
+              Estado real del vendedor promedio con tu perfil:{" "}
+              {certificado
+                ? "certificado ✓"
+                : proximoIntento
+                ? `en espera hasta ${dateFmt.format(proximoIntento)}`
+                : dia >= 8
+                ? "disponible"
+                : `bloqueado (día ${dia}/8)`}
+            </p>
+          </div>
+        </div>
+      ) : certificado ? (
         <div className="rounded-2xl bg-verde text-crema p-6 sm:p-8 flex items-center gap-6">
           <span className="text-6xl" aria-hidden="true">🏆</span>
           <div>
