@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin, pesos } from "@/lib/db/queries";
 import TopNav from "@/components/TopNav";
 import DeleteUserButton from "./DeleteUserButton";
+import Superpowers from "./Superpowers";
 
 export const dynamic = "force-dynamic";
 
@@ -110,18 +111,29 @@ export default async function AdminVendedoresPage() {
                     ) : "nunca"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <DeleteUserButton
-                      userId={v.id}
-                      userName={v.nombre}
-                      disabled={v.id === user.id || v.rol === "admin"}
-                      disabledReason={
-                        v.id === user.id
-                          ? "No puedes borrarte a ti mismo"
-                          : v.rol === "admin"
-                          ? "No puedes borrar a otro admin desde la UI"
-                          : undefined
-                      }
-                    />
+                    <div className="flex justify-end items-center gap-3">
+                      {v.rol !== "admin" && (
+                        <Superpowers
+                          userId={v.id}
+                          userName={v.nombre}
+                          isCertified={!!v.certifications}
+                          currentDay={v.enrollments?.dia_actual ?? 1}
+                          archived={v.enrollments?.estado === "archivado"}
+                        />
+                      )}
+                      <DeleteUserButton
+                        userId={v.id}
+                        userName={v.nombre}
+                        disabled={v.id === user.id || v.rol === "admin"}
+                        disabledReason={
+                          v.id === user.id
+                            ? "No puedes borrarte a ti mismo"
+                            : v.rol === "admin"
+                            ? "No puedes borrar a otro admin desde la UI"
+                            : undefined
+                        }
+                      />
+                    </div>
                   </td>
                 </tr>
               );

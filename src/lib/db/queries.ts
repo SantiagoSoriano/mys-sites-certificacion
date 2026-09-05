@@ -131,6 +131,10 @@ export type AdminOverview = {
   dealsPendientesAprobacion: number;
   prospectosSinAsignar: number;
   comisionesPorPagar: number;
+  ingresosTotalesCobrados: number;
+  ingresosPotencialesPendientes: number;
+  topVendedor: { nombre: string; monto: number } | null;
+  certificados: number;
 };
 
 export type RecentLogin = {
@@ -166,7 +170,16 @@ export async function getRecentLogins(
 export async function getAdminOverview(
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<AdminOverview> {
-  const [vendedores, deals, prospects, commissions] = await Promise.all([
+  const [
+    vendedores,
+    deals,
+    prospects,
+    commissionsPendientes,
+    dealsCobrados,
+    commissionsPendientesMontos,
+    topVendedorRes,
+    certificados,
+  ] = await Promise.all([
     supabase
       .from("users")
       .select("id", { count: "exact", head: true })
@@ -183,13 +196,49 @@ export async function getAdminOverview(
       .from("commissions")
       .select("id", { count: "exact", head: true })
       .eq("estado", "pendiente"),
+    supabase.from("deals").select("monto").eq("estado", "pagado"),
+    supabase.from("commissions").select("monto").eq("estado", "pendiente"),
+    supabase
+      .from("commissions")
+      .select("monto, vendedor:users!commissions_vendedor_id_fkey(nombre)"),
+    supabase
+      .from("certifications")
+      .select("user_id", { count: "exact", head: true }),
   ]);
+
+  const ingresosTotalesCobrados = (dealsCobrados.data ?? []).reduce(
+    (s, d) => s + Number((d as { monto: number }).monto),
+    0
+  );
+
+  const ingresosPotencialesPendientes = (commissionsPendientesMontos.data ?? []).reduce(
+    (s, c) => s + Number((c as { monto: number }).monto),
+    0
+  );
+
+  // Agrupar comisiones por vendedor y encontrar el top
+  const byVendedor = new Map<string, number>();
+  for (const row of (topVendedorRes.data ?? []) as unknown as Array<{
+    monto: number;
+    vendedor: { nombre: string } | null;
+  }>) {
+    const nombre = row.vendedor?.nombre ?? "—";
+    byVendedor.set(nombre, (byVendedor.get(nombre) ?? 0) + Number(row.monto));
+  }
+  let topVendedor: { nombre: string; monto: number } | null = null;
+  for (const [nombre, monto] of byVendedor.entries()) {
+    if (!topVendedor || monto > topVendedor.monto) topVendedor = { nombre, monto };
+  }
 
   return {
     vendedoresActivos: vendedores.count ?? 0,
     dealsPendientesAprobacion: deals.count ?? 0,
     prospectosSinAsignar: prospects.count ?? 0,
-    comisionesPorPagar: commissions.count ?? 0,
+    comisionesPorPagar: commissionsPendientes.count ?? 0,
+    ingresosTotalesCobrados,
+    ingresosPotencialesPendientes,
+    topVendedor,
+    certificados: certificados.count ?? 0,
   };
 }
 

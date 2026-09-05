@@ -1,4 +1,4 @@
-import { getAdminOverview, getRecentLogins, requireAdmin } from "@/lib/db/queries";
+import { getAdminOverview, getRecentLogins, pesos, requireAdmin } from "@/lib/db/queries";
 import TopNav from "@/components/TopNav";
 import StatCard from "../dashboard/StatCard";
 import BusinessSeeder from "./BusinessSeeder";
@@ -25,7 +25,7 @@ export default async function AdminPage() {
         <StatCard
           label="Vendedores"
           value={data.vendedoresActivos}
-          hint="Cuentas registradas"
+          hint={`${data.certificados} certificados`}
           href="/admin/vendedores"
         />
         <StatCard
@@ -48,6 +48,44 @@ export default async function AdminPage() {
           accent="verde"
           href="/admin/comisiones"
         />
+      </section>
+
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-border bg-white/60 p-5">
+          <p className="text-[10px] uppercase tracking-widest text-verde font-medium">
+            Ingresos cobrados
+          </p>
+          <p className="text-3xl font-semibold text-verde mt-1">
+            {pesos(data.ingresosTotalesCobrados)}
+          </p>
+          <p className="text-xs text-cafe/60 mt-1">Total histórico</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-white/60 p-5">
+          <p className="text-[10px] uppercase tracking-widest text-terracota font-medium">
+            Comisiones potenciales
+          </p>
+          <p className="text-3xl font-semibold text-terracota mt-1">
+            {pesos(data.ingresosPotencialesPendientes)}
+          </p>
+          <p className="text-xs text-cafe/60 mt-1">Aprobadas, sin pagar</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-white/60 p-5">
+          <p className="text-[10px] uppercase tracking-widest text-cafe/60 font-medium">
+            Top vendedor
+          </p>
+          {data.topVendedor ? (
+            <>
+              <p className="text-xl font-semibold text-cafe mt-1 truncate">
+                {data.topVendedor.nombre}
+              </p>
+              <p className="text-xs text-cafe/70 mt-1">
+                {pesos(data.topVendedor.monto)} generado
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-cafe/50 mt-2">Sin ventas aún</p>
+          )}
+        </div>
       </section>
 
       <section className="space-y-3">

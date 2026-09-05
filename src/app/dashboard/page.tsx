@@ -4,6 +4,7 @@ import { getPueblaWeather } from "@/lib/weather";
 import TopNav from "@/components/TopNav";
 import StatCard from "./StatCard";
 import ConfettiOnCert from "./ConfettiOnCert";
+import FraseCard from "./FraseCard";
 
 export const dynamic = "force-dynamic";
 
@@ -24,14 +25,7 @@ export default async function DashboardPage() {
       <TopNav user={user} variant="vendedor" />
 
       <section className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 rounded-2xl border border-border bg-terracota/10 px-5 py-4">
-          <p className="text-[10px] uppercase tracking-widest text-terracota font-medium">
-            Frase del día
-          </p>
-          <p className="text-cafe italic mt-1 leading-snug">
-            "{frase}"
-          </p>
-        </div>
+        <FraseCard initial={frase} />
         {weather && (
           <div className="sm:w-52 rounded-2xl border border-border bg-verde/10 px-5 py-4 flex items-center gap-4">
             <span className="text-4xl" aria-hidden="true">{weather.emoji}</span>
