@@ -225,11 +225,15 @@ function MapView({
     (async () => {
       try {
         console.log("[mapa] init: importando Leaflet…");
-        const [{ default: L }] = await Promise.all([
-          import("leaflet"),
-          import("leaflet.markercluster"),
-        ]);
-        console.log("[mapa] Leaflet OK, inyectando CSS");
+        // Importar Leaflet PRIMERO y asignarlo al window global.
+        // markercluster busca window.L al cargar y falla con "L is not defined"
+        // si lo importas en paralelo.
+        const L = (await import("leaflet")).default;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).L = L;
+        console.log("[mapa] Leaflet OK, cargando markercluster");
+        await import("leaflet.markercluster");
+        console.log("[mapa] markercluster OK, inyectando CSS");
         injectCss("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
         injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css");
         injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css");
