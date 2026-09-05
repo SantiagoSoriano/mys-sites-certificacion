@@ -135,6 +135,24 @@ export type AdminOverview = {
   ingresosPotencialesPendientes: number;
   topVendedor: { nombre: string; monto: number } | null;
   certificados: number;
+  leaderboardEntrenamiento: LeaderEntrenamiento[];
+  leaderboardCertificados: LeaderCertificado[];
+};
+
+export type LeaderEntrenamiento = {
+  id: string;
+  nombre: string;
+  dia: number;
+  practicasCompletadas: number;
+  scorePromedio: number | null;
+};
+
+export type LeaderCertificado = {
+  id: string;
+  nombre: string;
+  fechaCert: string;
+  comisionTotal: number;
+  ventasCerradas: number;
 };
 
 export type RecentLogin = {
@@ -230,6 +248,11 @@ export async function getAdminOverview(
     if (!topVendedor || monto > topVendedor.monto) topVendedor = { nombre, monto };
   }
 
+  const [leaderboardEntrenamiento, leaderboardCertificados] = await Promise.all([
+    getLeaderboardEntrenamiento(supabase),
+    getLeaderboardCertificados(supabase),
+  ]);
+
   return {
     vendedoresActivos: vendedores.count ?? 0,
     dealsPendientesAprobacion: deals.count ?? 0,
@@ -239,7 +262,87 @@ export async function getAdminOverview(
     ingresosPotencialesPendientes,
     topVendedor,
     certificados: certificados.count ?? 0,
+    leaderboardEntrenamiento,
+    leaderboardCertificados,
   };
+}
+
+async function getLeaderboardEntrenamiento(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<LeaderEntrenamiento[]> {
+  // Vendedores NO certificados con enrollment activo, ordenados por día desc,
+  // luego por score promedio de prácticas desc.
+  const { data } = await supabase
+    .from("users")
+    .select(
+      "id, nombre, rol, certifications(user_id), enrollments(dia_actual, estado), practice_sessions(score)"
+    )
+    .eq("rol", "vendedor");
+
+  const rows = (data ?? []) as unknown as Array<{
+    id: string;
+    nombre: string;
+    certifications: { user_id: string } | null;
+    enrollments: { dia_actual: number; estado: string } | null;
+    practice_sessions: { score: number | null }[];
+  }>;
+
+  return rows
+    .filter((r) => !r.certifications && r.enrollments?.estado !== "archivado")
+    .map((r) => {
+      const scores = r.practice_sessions
+        .map((s) => s.score)
+        .filter((s): s is number => typeof s === "number");
+      return {
+        id: r.id,
+        nombre: r.nombre,
+        dia: r.enrollments?.dia_actual ?? 1,
+        practicasCompletadas: r.practice_sessions.length,
+        scorePromedio:
+          scores.length > 0
+            ? Math.round(
+                (scores.reduce((s, n) => s + n, 0) / scores.length) * 10
+              ) / 10
+            : null,
+      };
+    })
+    .sort((a, b) => {
+      if (b.dia !== a.dia) return b.dia - a.dia;
+      const av = a.scorePromedio ?? -1;
+      const bv = b.scorePromedio ?? -1;
+      if (bv !== av) return bv - av;
+      return b.practicasCompletadas - a.practicasCompletadas;
+    })
+    .slice(0, 5);
+}
+
+async function getLeaderboardCertificados(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<LeaderCertificado[]> {
+  // Certificados ordenados por comisión total (pagada + pendiente) desc.
+  const { data } = await supabase
+    .from("certifications")
+    .select(
+      "user_id, fecha_certificacion, user:users!certifications_user_id_fkey(nombre), commissions:commissions!commissions_vendedor_id_fkey(monto, deal_id)"
+    );
+
+  const rows = (data ?? []) as unknown as Array<{
+    user_id: string;
+    fecha_certificacion: string;
+    user: { nombre: string } | null;
+    commissions: { monto: number; deal_id: string }[];
+  }>;
+
+  return rows
+    .map((r) => ({
+      id: r.user_id,
+      nombre: r.user?.nombre ?? "—",
+      fechaCert: r.fecha_certificacion,
+      comisionTotal: r.commissions.reduce((s, c) => s + Number(c.monto), 0),
+      ventasCerradas: new Set(r.commissions.map((c) => c.deal_id)).size,
+    }))
+    .sort((a, b) => b.comisionTotal - a.comisionTotal)
+    .slice(0, 5);
 }
 
 export function pesos(n: number): string {
