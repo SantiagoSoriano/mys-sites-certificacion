@@ -133,6 +133,36 @@ export type AdminOverview = {
   comisionesPorPagar: number;
 };
 
+export type RecentLogin = {
+  id: string;
+  nombre: string;
+  email: string;
+  city: string | null;
+  country: string | null;
+  at: string;
+};
+
+export async function getRecentLogins(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  limit = 8
+): Promise<RecentLogin[]> {
+  const { data } = await supabase
+    .from("users")
+    .select("id, nombre, email, last_login_city, last_login_country, last_login_at")
+    .not("last_login_at", "is", null)
+    .order("last_login_at", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    nombre: r.nombre as string,
+    email: r.email as string,
+    city: (r.last_login_city as string | null) ?? null,
+    country: (r.last_login_country as string | null) ?? null,
+    at: r.last_login_at as string,
+  }));
+}
+
 export async function getAdminOverview(
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<AdminOverview> {

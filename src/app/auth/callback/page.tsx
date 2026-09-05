@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { trackLogin } from "@/lib/track-login";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ function CallbackInner() {
           setError(`exchange_failed: ${error.message}`);
           return;
         }
+        void trackLogin();
         router.replace(next);
         return;
       }
@@ -49,12 +51,12 @@ function CallbackInner() {
       // during client init. Wait a tick then verify.
       const hash = window.location.hash;
       if (hash && hash.includes("access_token")) {
-        // Give Supabase JS a moment to process the hash
         await new Promise((r) => setTimeout(r, 300));
         const {
           data: { session },
         } = await supabase.auth.getSession();
         if (session) {
+          void trackLogin();
           router.replace(next);
           return;
         }

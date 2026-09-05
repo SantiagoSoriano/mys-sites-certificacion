@@ -3,6 +3,7 @@ import { fraseDelDia } from "@/lib/motivation";
 import { getPueblaWeather } from "@/lib/weather";
 import TopNav from "@/components/TopNav";
 import StatCard from "./StatCard";
+import ConfettiOnCert from "./ConfettiOnCert";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="flex-1 px-6 py-10 max-w-4xl mx-auto w-full space-y-8">
+      <ConfettiOnCert certificado={data.certificado} />
       <TopNav user={user} variant="vendedor" />
 
       <section className="flex flex-col sm:flex-row gap-3">
