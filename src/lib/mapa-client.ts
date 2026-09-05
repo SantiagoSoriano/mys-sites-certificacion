@@ -1,5 +1,6 @@
 // Cliente HTTP para el Mapa de Prospectos (Flask + Turso en Render).
 // Server-only. Autenticación por header X-Programa-Api-Key.
+// Tolera cold starts de Render (~30-60s) con timeout largo + retry.
 
 export type MapaProspect = {
   id: string; // place_id de Google
@@ -34,6 +35,47 @@ function headers(): HeadersInit {
   };
 }
 
+// Fetch con timeout + retry para cold starts de Render.
+// Primer intento: 15s. Si falla, retry con 75s (Render puede tardar hasta 60s
+// en despertar del sleep del free tier).
+async function fetchMapa(
+  url: string,
+  init?: RequestInit
+): Promise<Response> {
+  const attempts = [
+    { timeoutMs: 15_000, label: "first" },
+    { timeoutMs: 75_000, label: "cold_start_retry" },
+  ];
+
+  let lastError: unknown = null;
+  for (const { timeoutMs } of attempts) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        ...init,
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      clearTimeout(timer);
+      return res;
+    } catch (e: unknown) {
+      clearTimeout(timer);
+      lastError = e;
+      // Solo reintenta si fue timeout/abort o network error
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes("abort") && !msg.includes("fetch") && !msg.includes("network")) {
+        break;
+      }
+    }
+  }
+  throw new Error(
+    lastError instanceof Error
+      ? `Mapa unreachable (probable cold start): ${lastError.message}`
+      : "Mapa unreachable"
+  );
+}
+
 export async function listMapaProspects(opts?: {
   limit?: number;
   giro?: string;
@@ -46,9 +88,8 @@ export async function listMapaProspects(opts?: {
   if (opts?.ciudad) params.set("ciudad", opts.ciudad);
   if (opts?.sinSitioSolo) params.set("sin_sitio_solo", "1");
 
-  const res = await fetch(`${baseUrl()}/api/programa/prospects?${params}`, {
+  const res = await fetchMapa(`${baseUrl()}/api/programa/prospects?${params}`, {
     headers: headers(),
-    cache: "no-store",
   });
   if (!res.ok) {
     throw new Error(`Mapa list failed: ${res.status} ${await res.text()}`);
@@ -60,7 +101,7 @@ export async function markMapaProspect(
   placeId: string,
   appProspectId: string
 ): Promise<void> {
-  const res = await fetch(`${baseUrl()}/api/programa/mark/${placeId}`, {
+  const res = await fetchMapa(`${baseUrl()}/api/programa/mark/${placeId}`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ app_prospect_id: appProspectId }),
@@ -74,7 +115,7 @@ export async function markMapaProspect(
 }
 
 export async function releaseMapaProspect(placeId: string): Promise<void> {
-  const res = await fetch(`${baseUrl()}/api/programa/release/${placeId}`, {
+  const res = await fetchMapa(`${baseUrl()}/api/programa/release/${placeId}`, {
     method: "POST",
     headers: headers(),
   });
