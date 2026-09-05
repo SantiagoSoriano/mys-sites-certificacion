@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin, pesos } from "@/lib/db/queries";
 import TopNav from "@/components/TopNav";
+import DeleteUserButton from "./DeleteUserButton";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function AdminVendedoresPage() {
               <th className="px-4 py-3 font-medium">Prospectos</th>
               <th className="px-4 py-3 font-medium">Cobrada</th>
               <th className="px-4 py-3 font-medium">Último ingreso</th>
+              <th className="px-4 py-3 font-medium text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -107,12 +109,26 @@ export default async function AdminVendedoresPage() {
                       </>
                     ) : "nunca"}
                   </td>
+                  <td className="px-4 py-3 text-right">
+                    <DeleteUserButton
+                      userId={v.id}
+                      userName={v.nombre}
+                      disabled={v.id === user.id || v.rol === "admin"}
+                      disabledReason={
+                        v.id === user.id
+                          ? "No puedes borrarte a ti mismo"
+                          : v.rol === "admin"
+                          ? "No puedes borrar a otro admin desde la UI"
+                          : undefined
+                      }
+                    />
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-cafe/60">
+                <td colSpan={8} className="px-4 py-8 text-center text-cafe/60">
                   Aún no hay vendedores registrados.
                 </td>
               </tr>
