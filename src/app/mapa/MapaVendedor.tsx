@@ -4,31 +4,227 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MapaProspect } from "@/lib/mapa-client";
 
+type LoadState =
+  | { fase: "conectando"; startedAt: number }
+  | { fase: "despertando"; startedAt: number; segundos: number }
+  | { fase: "listo"; prospects: MapaProspect[] }
+  | { fase: "error"; mensaje: string };
+
 type Props = {
-  prospects: MapaProspect[];
   slotsLibres: number;
 };
 
-export default function MapaVendedor({ prospects, slotsLibres }: Props) {
+export default function MapaVendedor({ slotsLibres }: Props) {
   const router = useRouter();
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<unknown>(null);
+  const [state, setState] = useState<LoadState>({
+    fase: "conectando",
+    startedAt: Date.now(),
+  });
   const [selected, setSelected] = useState<MapaProspect | null>(null);
   const [reclamando, setReclamando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Cargar prospects — si el server responde 503 (cold start), reintenta
+  useEffect(() => {
+    let cancelled = false;
+
+    async function cargar() {
+      const startedAt = Date.now();
+      setState({ fase: "conectando", startedAt });
+
+      // Tick para actualizar contador de segundos si entramos en modo despertando
+      let tickInterval: ReturnType<typeof setInterval> | null = null;
+
+      try {
+        // Primer intento — timeout corto
+        const primero = await intentar(6_000);
+        if (primero) {
+          if (cancelled) return;
+          setState({ fase: "listo", prospects: primero });
+          return;
+        }
+
+        // Entramos en modo despertando
+        if (cancelled) return;
+        setState({ fase: "despertando", startedAt, segundos: 0 });
+        tickInterval = setInterval(() => {
+          setState((prev) => {
+            if (prev.fase !== "despertando") return prev;
+            const secs = Math.floor((Date.now() - startedAt) / 1000);
+            return { ...prev, segundos: secs };
+          });
+        }, 500);
+
+        // Segundo intento con timeout largo — Vercel maxDuration = 90s
+        const segundo = await intentar(85_000);
+        if (tickInterval) clearInterval(tickInterval);
+        if (cancelled) return;
+        if (segundo) {
+          setState({ fase: "listo", prospects: segundo });
+        } else {
+          setState({
+            fase: "error",
+            mensaje:
+              "El mapa está tardando más de lo normal. Espera 30 segundos y refresca esta página.",
+          });
+        }
+      } catch (e: unknown) {
+        if (tickInterval) clearInterval(tickInterval);
+        if (cancelled) return;
+        setState({
+          fase: "error",
+          mensaje: e instanceof Error ? e.message : "Error desconocido",
+        });
+      }
+    }
+
+    async function intentar(timeoutMs: number): Promise<MapaProspect[] | null> {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch("/api/mapa/prospects?limit=500", {
+          signal: ctrl.signal,
+          cache: "no-store",
+        });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = (await res.json()) as {
+            ok: boolean;
+            prospects: MapaProspect[];
+          };
+          return data.prospects;
+        }
+        // 503 = cold start — le dejamos reintentar
+        if (res.status === 503) return null;
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error ?? `HTTP ${res.status}`);
+      } catch (e: unknown) {
+        clearTimeout(timer);
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("abort")) return null;
+        throw e;
+      }
+    }
+
+    cargar();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state.fase !== "listo") {
+    return <LoadingCard state={state} />;
+  }
+
+  return (
+    <MapView
+      prospects={state.prospects}
+      slotsLibres={slotsLibres}
+      selected={selected}
+      setSelected={setSelected}
+      reclamando={reclamando}
+      setReclamando={setReclamando}
+      error={error}
+      setError={setError}
+      onReclamado={() => {
+        setSelected(null);
+        router.push("/prospectos");
+      }}
+    />
+  );
+}
+
+function LoadingCard({ state }: { state: LoadState }) {
+  const despertando = state.fase === "despertando";
+  const errorState = state.fase === "error";
+  // Barra de progreso: mientras despierta va del 10% al 90% en los primeros 60s
+  const pct = despertando
+    ? Math.min(90, 10 + (state.segundos / 60) * 80)
+    : 15;
+
+  if (errorState) {
+    return (
+      <div className="rounded-2xl border border-border bg-white/60 p-6 space-y-3">
+        <p className="text-lg font-semibold text-cafe">
+          🕐 Algo tardó demasiado
+        </p>
+        <p className="text-sm text-cafe/75">{state.mensaje}</p>
+        <a
+          href="/mapa"
+          className="inline-block bg-terracota text-crema px-5 py-2 rounded-full text-sm font-medium hover:bg-terracota-oscuro transition"
+        >
+          Reintentar
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-white/60 p-8 text-center space-y-5">
+      <div className="text-4xl">🗺️</div>
+      <div className="space-y-2">
+        <p className="text-lg font-semibold text-cafe">
+          {despertando ? "Prendiendo el mapa…" : "Conectando al mapa…"}
+        </p>
+        <p className="text-sm text-cafe/70 max-w-md mx-auto">
+          {despertando
+            ? "El mapa se apaga solo cuando nadie lo usa (para ahorrar). Aguanta unos segundos, ya viene."
+            : "Cargando los negocios de Puebla."}
+        </p>
+      </div>
+
+      <div className="max-w-md mx-auto space-y-2">
+        <div className="w-full h-2 rounded-full bg-cafe/10 overflow-hidden">
+          <div
+            className="h-full bg-terracota transition-all duration-500 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        {despertando && (
+          <p className="text-xs text-cafe/60">
+            Llevamos <strong>{state.segundos}s</strong> · normalmente tarda entre
+            30 y 60 segundos la primera vez del día
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MapView({
+  prospects,
+  slotsLibres,
+  selected,
+  setSelected,
+  reclamando,
+  setReclamando,
+  error,
+  setError,
+  onReclamado,
+}: {
+  prospects: MapaProspect[];
+  slotsLibres: number;
+  selected: MapaProspect | null;
+  setSelected: (p: MapaProspect | null) => void;
+  reclamando: boolean;
+  setReclamando: (b: boolean) => void;
+  error: string | null;
+  setError: (s: string | null) => void;
+  onReclamado: () => void;
+}) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<unknown>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
-
-    // Cargar Leaflet + markercluster dinámicamente para evitar SSR issues
     let cancelled = false;
+
     (async () => {
       const [{ default: L }] = await Promise.all([
         import("leaflet"),
         import("leaflet.markercluster"),
       ]);
-      // CSS de Leaflet + markercluster (inject en runtime)
       injectCss("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
       injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css");
       injectCss("https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css");
@@ -36,7 +232,7 @@ export default function MapaVendedor({ prospects, slotsLibres }: Props) {
       if (cancelled || !mapContainerRef.current) return;
 
       const map = L.map(mapContainerRef.current, {
-        center: [19.0413, -98.2062], // Puebla
+        center: [19.0413, -98.2062],
         zoom: 12,
         zoomControl: true,
         preferCanvas: true,
@@ -96,7 +292,7 @@ export default function MapaVendedor({ prospects, slotsLibres }: Props) {
         mapRef.current = null;
       }
     };
-  }, [prospects]);
+  }, [prospects, setSelected]);
 
   async function reclamar() {
     if (!selected || reclamando || slotsLibres <= 0) return;
@@ -118,8 +314,7 @@ export default function MapaVendedor({ prospects, slotsLibres }: Props) {
           setError(data.error ?? `HTTP ${res.status}`);
         }
       } else {
-        setSelected(null);
-        router.push("/prospectos");
+        onReclamado();
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "network");
@@ -136,9 +331,7 @@ export default function MapaVendedor({ prospects, slotsLibres }: Props) {
         style={{ height: "500px" }}
       />
       {!ready && (
-        <p className="text-xs text-cafe/60 text-center">
-          Cargando mapa…
-        </p>
+        <p className="text-xs text-cafe/60 text-center">Dibujando el mapa…</p>
       )}
       <p className="text-xs text-cafe/60 text-center">
         {prospects.length} prospectos disponibles. Los verdes no tienen sitio (mejores).
@@ -216,11 +409,11 @@ export default function MapaVendedor({ prospects, slotsLibres }: Props) {
 }
 
 function colorPorCalidad(calidad: number | null, website: string | null): string {
-  if (calidad === 0 || !website) return "#22c55e"; // verde — sin sitio
-  if (calidad === 1) return "#f97316"; // naranja — casi no existe
-  if (calidad === 2) return "#eab308"; // amarillo — mejorable
-  if (calidad === 3) return "#6b7280"; // gris — buen sitio, difícil
-  return "#3b82f6"; // azul — sin revisar
+  if (calidad === 0 || !website) return "#22c55e";
+  if (calidad === 1) return "#f97316";
+  if (calidad === 2) return "#eab308";
+  if (calidad === 3) return "#6b7280";
+  return "#3b82f6";
 }
 
 function calidadLabel(calidad: number | null, website: string | null): string {
