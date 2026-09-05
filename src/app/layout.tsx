@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Poppins } from "next/font/google";
 import "./globals.css";
+import { createClient } from "@/lib/supabase/server";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -19,10 +20,31 @@ export const metadata: Metadata = {
   description: "Programa de certificación de vendedores de MyS Sites.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+async function isCurrentUserAdmin(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { data } = await supabase
+      .from("users")
+      .select("rol")
+      .eq("id", user.id)
+      .single();
+    return data?.rol === "admin";
+  } catch {
+    return false;
+  }
+}
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const isAdmin = await isCurrentUserAdmin();
+
   return (
     <html
       lang="es"
+      data-admin={isAdmin ? "true" : undefined}
       className={`${fraunces.variable} ${poppins.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

@@ -11,6 +11,25 @@
   --foreground: var(--brand-cafe);
   --muted: #f0e5d1;
   --border: #e6d8bf;
+  --surface: rgba(255, 255, 255, 0.6);
+  --surface-strong: rgba(255, 255, 255, 0.9);
+}
+
+/* Admin theme: negro + dorado + plateado. Se aplica cuando el layout
+   detecta rol=admin y agrega data-admin="true" al <html>. */
+:root[data-admin="true"] {
+  --brand-terracota: #D4AF37;         /* dorado clásico */
+  --brand-terracota-oscuro: #B8931F;  /* dorado quemado */
+  --brand-verde: #B8C1C6;             /* plateado frío (accent 2) */
+  --brand-cafe: #E8E4DA;              /* texto principal (silver-warm) */
+  --brand-crema: #0B0B0B;             /* casi negro (usado como bg y como texto sobre dorado) */
+
+  --background: #0B0B0B;
+  --foreground: #E8E4DA;
+  --muted: #171717;
+  --border: #2A2A2A;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-strong: rgba(255, 255, 255, 0.08);
 }
 
 @theme inline {
@@ -36,4 +55,28 @@ body {
 h1, h2, h3, h4 {
   font-family: var(--font-fraunces), Georgia, serif;
   letter-spacing: -0.01em;
+}
+
+/* En admin, las "cards blancas translucidas" se ven mejor como cristales
+   oscuros (glass morphism dark). Sobrescribimos bg-white/60 y bg-white/40
+   para que respondan al tema. */
+:root[data-admin="true"] .bg-white\/60 {
+  background-color: var(--surface) !important;
+}
+:root[data-admin="true"] .bg-white\/40 {
+  background-color: rgba(255, 255, 255, 0.025) !important;
+}
+:root[data-admin="true"] .bg-white\/90,
+:root[data-admin="true"] .bg-white\/80,
+:root[data-admin="true"] .hover\:bg-white\/90:hover,
+:root[data-admin="true"] .hover\:bg-white\/80:hover,
+:root[data-admin="true"] .hover\:bg-white:hover {
+  background-color: var(--surface-strong) !important;
+}
+:root[data-admin="true"] .bg-white {
+  background-color: #1A1A1A !important;
+}
+:root[data-admin="true"] .bg-crema\/60,
+:root[data-admin="true"] .bg-crema\/70 {
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }
