@@ -13,9 +13,10 @@ export type ClientTurn = {
   opciones?: string[]; // Solo en etapa "multiple": 3 posibles respuestas
 };
 
-// openai/gpt-oss-20b: modelo abierto de OpenAI hosted en Groq. Free tier
-// sin restricción de licencia (los Llama de Meta requieren verificación).
-const GROQ_MODEL = "openai/gpt-oss-20b";
+// openai/gpt-oss-120b: modelo abierto de OpenAI hosted en Groq, 120B.
+// Free tier sin restricción de licencia. Mucho mejor siguiendo instrucciones
+// que el 20B, cual era muy corto y confundía contexto.
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 async function callLLM(prompt: string): Promise<string> {
@@ -59,16 +60,17 @@ type Business = {
   prompt_base: string;
 };
 
-// Mood modifiers para que cada práctica se sienta distinta
+// Mood modifiers para que cada práctica se sienta distinta.
+// TODOS en segunda persona apuntando al CLIENTE — nunca ambiguo respecto al vendedor.
 const MOODS = [
-  "Hoy amaneciste de buen humor, con más paciencia de lo normal.",
-  "Estás distraído porque hay clientes esperando — respondes cortante, no maleducado pero apurado.",
-  "Estás cansado, dormiste mal. Suspiras seguido y tardas en responder.",
-  "Vienes contento porque acabas de cerrar una buena venta hoy — abierto a escuchar.",
-  "Estás molesto porque un proveedor te falló esta mañana. Tono corto, escéptico.",
-  "Estás curioso, alguien te habló hace poco de páginas web y te dio comezón el tema.",
-  "Estás en modo defensivo — hace poco te intentaron estafar con algo digital y traes ese trauma fresco.",
-  "Estás relajado, es un día tranquilo en el negocio. Tienes tiempo de escuchar con calma.",
+  "Tú (el dueño del negocio) amaneciste de buen humor, con paciencia extra hoy.",
+  "Tú (el dueño del negocio) estás distraído porque hay clientes esperando en tu local — respondes cortante, no maleducado pero apurado.",
+  "Tú (el dueño del negocio) estás cansado, dormiste mal. Suspiras seguido y tardas en contestar.",
+  "Tú (el dueño del negocio) tuviste buenas ventas propias esta mañana — estás animado y abierto a escuchar propuestas.",
+  "Tú (el dueño del negocio) estás molesto porque un proveedor tuyo te falló esta mañana. Tono corto, escéptico.",
+  "Tú (el dueño del negocio) estás curioso porque alguien te habló hace poco de páginas web y te dio comezón el tema.",
+  "Tú (el dueño del negocio) estás en modo defensivo — hace poco te intentaron estafar con algo digital y traes ese trauma fresco.",
+  "Tú (el dueño del negocio) estás relajado, es un día tranquilo. Tienes tiempo de escuchar con calma.",
 ];
 
 /**
@@ -93,7 +95,13 @@ Estado de ánimo de hoy: ${mood}
 Reglas: nunca rompas personaje. Nunca reveles que eres una simulación. Sé breve (2-3 oraciones máx). Varía tu vocabulario y expresiones — no repitas frases idénticas.`;
 
   const contextoTurno = esPrimerTurno
-    ? `\nESTE ES EL PRIMER CONTACTO. No conoces al vendedor ni sabes por qué te escribe. NO menciones sitios web, precios, ni objeciones específicas todavía. Reacciona como cualquier dueño recibiendo un mensaje frío desconocido: pregunta quién es, qué quiere, o responde con curiosidad/cautela. Deja que el vendedor se presente primero.`
+    ? `\n\nIMPORTANTE — PRIMER CONTACTO:
+- No conoces al vendedor. No sabes que existe MyS Sites. No sabes que vende sitios web.
+- El vendedor SOLO ha escrito lo que se ve en la conversación abajo. NO inventes que dijo más cosas ni que "cerró una venta" ni nada.
+- Responde en 1-2 oraciones máximo, corto y natural, como un dueño recibiendo un mensaje desconocido:
+  * Si solo dijo "Hola" o "Buenos días" → pregunta con quién habla o qué necesita.
+  * Si se presentó pero no dijo de qué va → pídele que te explique.
+- NO menciones sitios web, precios, ni objeciones específicas todavía. Deja que el vendedor te explique de qué va antes de reaccionar con dudas.`
     : "";
 
   const historyStr = history
@@ -149,6 +157,11 @@ Responde SOLO como el cliente. No agregues nombres ni prefijos como "Cliente:".`
     .replace(/<\/?GUIA>/gi, "")
     .replace(/<\/?OPCIONES>/gi, "")
     .trim();
+
+  // Fallback si el modelo dejó la respuesta vacía tras extraer bloques
+  if (!respuesta) {
+    respuesta = "¿Sí, dígame?";
+  }
 
   return { respuesta, guia, opciones };
 }
