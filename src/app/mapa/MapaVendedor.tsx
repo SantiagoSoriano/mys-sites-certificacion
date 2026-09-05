@@ -251,14 +251,12 @@ function MapView({
           preferCanvas: true,
         });
 
-        L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-          {
-            attribution: "&copy; OpenStreetMap · CARTO",
-            subdomains: "abcd",
-            maxZoom: 19,
-          }
-        ).addTo(map);
+        // OpenStreetMap standard — sin watermark, sin API key
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap",
+          subdomains: ["a", "b", "c"],
+          maxZoom: 19,
+        }).addTo(map);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cluster = (L as any).markerClusterGroup({
