@@ -30,6 +30,7 @@ export type LeaderCertificado = {
   fechaCert: string;
   comisionTotal: number;
   ventasCerradas: number;
+  mostrarGanancias: boolean;
 };
 
 export type RecentLogin = {

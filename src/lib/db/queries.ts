@@ -281,19 +281,24 @@ export async function getLeaderboardCertificados(
   const { data } = await supabase
     .from("commissions")
     .select(
-      "monto, deal_id, vendedor:users!commissions_vendedor_id_fkey(id, nombre), certification:certifications!certifications_user_id_fkey(user_id)"
+      "monto, deal_id, vendedor:users!commissions_vendedor_id_fkey(id, nombre, mostrar_ganancias)"
     );
 
   const rows = (data ?? []) as unknown as Array<{
     monto: number;
     deal_id: string;
-    vendedor: { id: string; nombre: string } | null;
+    vendedor: { id: string; nombre: string; mostrar_ganancias: boolean } | null;
   }>;
 
-  // Agrupar por vendedor
   const byVendedor = new Map<
     string,
-    { id: string; nombre: string; monto: number; deals: Set<string> }
+    {
+      id: string;
+      nombre: string;
+      monto: number;
+      deals: Set<string>;
+      mostrarGanancias: boolean;
+    }
   >();
   for (const r of rows) {
     if (!r.vendedor) continue;
@@ -303,6 +308,7 @@ export async function getLeaderboardCertificados(
       nombre: r.vendedor.nombre,
       monto: 0,
       deals: new Set<string>(),
+      mostrarGanancias: r.vendedor.mostrar_ganancias !== false,
     };
     prev.monto += Number(r.monto);
     prev.deals.add(r.deal_id);
@@ -316,8 +322,9 @@ export async function getLeaderboardCertificados(
       fechaCert: "",
       comisionTotal: v.monto,
       ventasCerradas: v.deals.size,
+      mostrarGanancias: v.mostrarGanancias,
     }))
     .sort((a, b) => b.comisionTotal - a.comisionTotal)
-    .slice(0, 5);
+    .slice(0, 20);
 }
 
