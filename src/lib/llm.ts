@@ -186,6 +186,43 @@ Responde SOLO como el cliente. No agregues nombres ni prefijos como "Cliente:".`
 }
 
 /**
+ * Coach que evalúa las respuestas teóricas del examen contra la clave.
+ */
+export async function coachEvaluateTheory(
+  answers: { pregunta: string; clave: string; respuesta: string }[]
+): Promise<{ score: number; feedback: string }> {
+  const block = answers
+    .map(
+      (a, i) =>
+        `${i + 1}. PREGUNTA: ${a.pregunta}\n   CLAVE (lo correcto): ${a.clave}\n   RESPUESTA DEL VENDEDOR: ${a.respuesta || "(en blanco)"}\n`
+    )
+    .join("\n");
+
+  const prompt = `Eres un coach evaluador del programa de certificación de MyS Sites. Evalúa la parte TEÓRICA del examen. Cada pregunta trae una CLAVE con lo que se esperaría contestar. Puntúa qué tanto la respuesta del vendedor cubre la clave y el reglamento (no requiere ser palabra por palabra, pero sí capturar la idea correcta).
+
+Respuestas del vendedor:
+
+${block}
+
+Da:
+1. Un SCORE del 1 al 10 general de la parte teórica.
+2. Un FEEDBACK breve (3-4 oraciones) que mencione en qué pregunta estuvo bien y cuál necesita reforzar.
+
+Formato de respuesta EXACTO:
+SCORE: <número>
+FEEDBACK: <texto>`;
+
+  const raw = await callLLM(prompt);
+  const scoreMatch = raw.match(/SCORE:\s*(\d+)/i);
+  const feedbackMatch = raw.match(/FEEDBACK:\s*([\s\S]*)/i);
+  const score = scoreMatch ? Math.max(1, Math.min(10, parseInt(scoreMatch[1], 10))) : 5;
+  const feedback = feedbackMatch
+    ? feedbackMatch[1].trim()
+    : "[Sin feedback parseable]";
+  return { score, feedback };
+}
+
+/**
  * Coach que evalúa la conversación al terminar la sesión.
  */
 export async function coachEvaluate(
