@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, GraduationCap, Info, Shield } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Info, Shield, Trophy } from "lucide-react";
 import type { ComponentType } from "react";
 
-export type TabIconKey = "dashboard" | "curso" | "info" | "admin";
+export type TabIconKey = "dashboard" | "curso" | "info" | "admin" | "ranking";
 
 export type TabItem = {
   href: string;
@@ -20,6 +20,7 @@ const ICONS: Record<TabIconKey, ComponentType<{ size?: number; strokeWidth?: num
   curso: GraduationCap,
   info: Info,
   admin: Shield,
+  ranking: Trophy,
 };
 
 type Props = { tabs: TabItem[] };

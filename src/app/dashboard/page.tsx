@@ -1,15 +1,7 @@
-import {
-  getDashboardData,
-  getLeaderboardCertificados,
-  getLeaderboardEntrenamiento,
-  pesos,
-  requireUser,
-} from "@/lib/db/queries";
+import { getDashboardData, pesos, requireUser } from "@/lib/db/queries";
 import { fraseDelDia } from "@/lib/motivation";
 import { getPueblaWeather } from "@/lib/weather";
-import { createAdminClient } from "@/lib/supabase/admin";
 import TopNav from "@/components/TopNav";
-import Leaderboards from "@/components/Leaderboards";
 import StatCard from "./StatCard";
 import ConfettiOnCert from "./ConfettiOnCert";
 import FraseCard from "./FraseCard";
@@ -18,15 +10,9 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { supabase, user } = await requireUser();
-  // Admin client para leaderboards (bypass RLS, para que vendedores vean a todos)
-  const adminClient = createAdminClient();
-  const [data, weather, entrenamiento, certificados] = await Promise.all([
+  const [data, weather] = await Promise.all([
     getDashboardData(supabase, user.id),
     getPueblaWeather(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    getLeaderboardEntrenamiento(adminClient as any).catch(() => []),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    getLeaderboardCertificados(adminClient as any).catch(() => []),
   ]);
 
   const enrollment = data.enrollment;
@@ -121,14 +107,6 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-cafe">Rankings del programa</h2>
-        <Leaderboards
-          entrenamiento={entrenamiento}
-          certificados={certificados}
-          highlightUserId={user.id}
-        />
-      </section>
     </main>
   );
 }

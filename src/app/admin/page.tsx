@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getAdminOverview, getRecentLogins, pesos, requireAdmin } from "@/lib/db/queries";
 import TopNav from "@/components/TopNav";
 import StatCard from "../dashboard/StatCard";
@@ -88,113 +89,23 @@ export default async function AdminPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-border bg-white/60 p-5 space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-lg font-semibold text-terracota">
-              En entrenamiento
-            </h3>
-            <span className="text-xs text-cafe/60">
-              {data.leaderboardEntrenamiento.length}
-            </span>
+      <section>
+        <Link
+          href="/ranking"
+          className="block rounded-2xl border border-border bg-white/60 hover:bg-white/90 p-4 transition"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-terracota font-medium">
+                Ranking del programa
+              </p>
+              <p className="text-sm text-cafe mt-1">
+                Ver podio de entrenamiento y certificados →
+              </p>
+            </div>
+            <span className="text-3xl">🏆</span>
           </div>
-          {data.leaderboardEntrenamiento.length === 0 ? (
-            <p className="text-sm text-cafe/60 italic">
-              Nadie está haciendo el curso ahora mismo.
-            </p>
-          ) : (
-            <ol className="space-y-2">
-              {data.leaderboardEntrenamiento.map((v, i) => (
-                <li
-                  key={v.id}
-                  className="flex items-center gap-3 text-sm border-b border-border/50 last:border-0 pb-2 last:pb-0"
-                >
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold ${
-                      i === 0
-                        ? "bg-terracota text-crema"
-                        : i === 1
-                        ? "bg-cafe/30 text-cafe"
-                        : i === 2
-                        ? "bg-cafe/15 text-cafe"
-                        : "bg-cafe/5 text-cafe/60"
-                    }`}
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-cafe font-medium truncate">{v.nombre}</p>
-                    <p className="text-[10px] text-cafe/60">
-                      Día {v.dia}/8 · {v.practicasCompletadas}{" "}
-                      {v.practicasCompletadas === 1 ? "práctica" : "prácticas"}
-                    </p>
-                  </div>
-                  {v.scorePromedio !== null && (
-                    <span className="text-xs text-terracota font-semibold">
-                      {v.scorePromedio}/10
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
-          <p className="text-[10px] text-cafe/50 italic pt-1">
-            Ordenados por día del curso, después por score promedio.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-white/60 p-5 space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-lg font-semibold text-verde">
-              Top vendedores certificados
-            </h3>
-            <span className="text-xs text-cafe/60">
-              {data.leaderboardCertificados.length}
-            </span>
-          </div>
-          {data.leaderboardCertificados.length === 0 ? (
-            <p className="text-sm text-cafe/60 italic">
-              Todavía nadie está certificado.
-            </p>
-          ) : (
-            <ol className="space-y-2">
-              {data.leaderboardCertificados.map((v, i) => (
-                <li
-                  key={v.id}
-                  className="flex items-center gap-3 text-sm border-b border-border/50 last:border-0 pb-2 last:pb-0"
-                >
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold ${
-                      i === 0
-                        ? "bg-verde text-crema"
-                        : i === 1
-                        ? "bg-verde/30 text-verde"
-                        : i === 2
-                        ? "bg-verde/15 text-verde"
-                        : "bg-cafe/5 text-cafe/60"
-                    }`}
-                  >
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-cafe font-medium truncate">{v.nombre}</p>
-                    <p className="text-[10px] text-cafe/60">
-                      {v.ventasCerradas}{" "}
-                      {v.ventasCerradas === 1 ? "venta" : "ventas"} cerradas
-                    </p>
-                  </div>
-                  <span className="text-xs text-verde font-semibold">
-                    {pesos(v.comisionTotal)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-          <p className="text-[10px] text-cafe/50 italic pt-1">
-            Ordenados por comisión total. Al certificarse alguien, sale de
-            entrenamiento y entra aquí automáticamente.
-          </p>
-        </div>
+        </Link>
       </section>
 
       <section className="space-y-3">
