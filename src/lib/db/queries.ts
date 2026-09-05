@@ -267,7 +267,7 @@ export async function getAdminOverview(
   };
 }
 
-async function getLeaderboardEntrenamiento(
+export async function getLeaderboardEntrenamiento(
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<LeaderEntrenamiento[]> {
   // Vendedores NO certificados con enrollment activo, ordenados por día desc,
@@ -316,7 +316,7 @@ async function getLeaderboardEntrenamiento(
     .slice(0, 5);
 }
 
-async function getLeaderboardCertificados(
+export async function getLeaderboardCertificados(
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<LeaderCertificado[]> {
   // Certificados ordenados por comisión total (pagada + pendiente) desc.
