@@ -7,7 +7,7 @@ import type {
 } from "@/lib/db/types";
 import { pesos } from "@/lib/format";
 
-type Tab = "entrenamiento" | "certificados";
+type Tab = "entrenamiento" | "vendedores";
 
 type Props = {
   entrenamiento: LeaderEntrenamiento[];
@@ -21,7 +21,7 @@ export default function RankingTabs({
   currentUserId,
 }: Props) {
   const [tab, setTab] = useState<Tab>(
-    certificados.length > 0 ? "certificados" : "entrenamiento"
+    certificados.length > 0 ? "vendedores" : "entrenamiento"
   );
 
   const activos = tab === "entrenamiento" ? entrenamiento : certificados;
@@ -38,9 +38,9 @@ export default function RankingTabs({
           count={entrenamiento.length}
         />
         <TabButton
-          active={tab === "certificados"}
-          onClick={() => setTab("certificados")}
-          label="Certificados"
+          active={tab === "vendedores"}
+          onClick={() => setTab("vendedores")}
+          label="Vendedores"
           count={certificados.length}
         />
       </div>
@@ -53,7 +53,7 @@ export default function RankingTabs({
           <p className="text-sm text-cafe/70">
             {tab === "entrenamiento"
               ? "Nadie está en el curso todavía."
-              : "Aún nadie está certificado. Sé el primero."}
+              : "Aún nadie ha cerrado su primera venta. Sé el primero."}
           </p>
         </div>
       ) : (
@@ -192,7 +192,7 @@ function PodiumColumn({
         {row.nombre}
       </p>
       <p className="text-[10px] text-cafe/60 text-center truncate max-w-full px-1">
-        {tab === "certificados"
+        {tab === "vendedores"
           ? pesos((row as LeaderCertificado).comisionTotal)
           : `Día ${(row as LeaderEntrenamiento).dia}/8`}
       </p>
@@ -276,7 +276,7 @@ function RestList({
                   )}
                 </p>
                 <p className="text-[10px] text-cafe/60">
-                  {tab === "certificados"
+                  {tab === "vendedores"
                     ? `${(row as LeaderCertificado).ventasCerradas} ${
                         (row as LeaderCertificado).ventasCerradas === 1
                           ? "venta"
@@ -288,7 +288,7 @@ function RestList({
                 </p>
               </div>
               <span className="text-sm font-semibold text-terracota">
-                {tab === "certificados"
+                {tab === "vendedores"
                   ? pesos((row as LeaderCertificado).comisionTotal)
                   : (row as LeaderEntrenamiento).scorePromedio !== null
                   ? `${(row as LeaderEntrenamiento).scorePromedio}/10`

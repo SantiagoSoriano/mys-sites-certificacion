@@ -274,27 +274,48 @@ export async function getLeaderboardEntrenamiento(
 export async function getLeaderboardCertificados(
   supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<LeaderCertificado[]> {
-  // Certificados ordenados por comisión total (pagada + pendiente) desc.
+  // "Vendedores" — cualquier vendedor con al menos 1 comisión registrada,
+  // sin importar si están certificados formalmente. Ordenados por comisión
+  // total (pagada + pendiente) desc. Marcelo entra aquí aunque no tenga
+  // certification (por Hotel Maró pre-programa formal).
   const { data } = await supabase
-    .from("certifications")
+    .from("commissions")
     .select(
-      "user_id, fecha_certificacion, user:users!certifications_user_id_fkey(nombre), commissions:commissions!commissions_vendedor_id_fkey(monto, deal_id)"
+      "monto, deal_id, vendedor:users!commissions_vendedor_id_fkey(id, nombre), certification:certifications!certifications_user_id_fkey(user_id)"
     );
 
   const rows = (data ?? []) as unknown as Array<{
-    user_id: string;
-    fecha_certificacion: string;
-    user: { nombre: string } | null;
-    commissions: { monto: number; deal_id: string }[];
+    monto: number;
+    deal_id: string;
+    vendedor: { id: string; nombre: string } | null;
   }>;
 
-  return rows
-    .map((r) => ({
-      id: r.user_id,
-      nombre: r.user?.nombre ?? "—",
-      fechaCert: r.fecha_certificacion,
-      comisionTotal: r.commissions.reduce((s, c) => s + Number(c.monto), 0),
-      ventasCerradas: new Set(r.commissions.map((c) => c.deal_id)).size,
+  // Agrupar por vendedor
+  const byVendedor = new Map<
+    string,
+    { id: string; nombre: string; monto: number; deals: Set<string> }
+  >();
+  for (const r of rows) {
+    if (!r.vendedor) continue;
+    const key = r.vendedor.id;
+    const prev = byVendedor.get(key) ?? {
+      id: r.vendedor.id,
+      nombre: r.vendedor.nombre,
+      monto: 0,
+      deals: new Set<string>(),
+    };
+    prev.monto += Number(r.monto);
+    prev.deals.add(r.deal_id);
+    byVendedor.set(key, prev);
+  }
+
+  return Array.from(byVendedor.values())
+    .map((v) => ({
+      id: v.id,
+      nombre: v.nombre,
+      fechaCert: "",
+      comisionTotal: v.monto,
+      ventasCerradas: v.deals.size,
     }))
     .sort((a, b) => b.comisionTotal - a.comisionTotal)
     .slice(0, 5);
