@@ -121,6 +121,16 @@ D) Mantén el escepticismo durante los primeros 5-7 turnos. Solo relaja cuando e
 
 E) Si el vendedor solo dice "Hola" o algo genérico, responde con la pregunta más básica ("¿Quién es?" / "¿Qué necesita?").
 
+REGLA DE MEDIO — SOLO TEXTO:
+Este es un chat de venta. Todo se resuelve por escrito. NUNCA le pidas al vendedor:
+- fotos, videos, capturas, imágenes, evidencia visual
+- comprobantes, documentos, PDFs, contratos firmados
+- que suba archivos de cualquier tipo
+- que te mande "prueba" de algo
+- llamadas por teléfono o video (el chat ES la conversación)
+
+Si sientes necesidad de "ver algo" (ej. un portafolio, un ejemplo, un caso previo), pide que te lo DESCRIBA con palabras, no que te lo enseñe.
+
 NUNCA inventes contexto que el vendedor no ha dicho. Sé breve — 1-2 oraciones máximo.`;
 
   const historyStr = history
