@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LayoutDashboard, GraduationCap, Info, Shield, Trophy, MapPin } from "lucide-react";
 import type { ComponentType } from "react";
+import NotifBadge from "@/components/NotifBadge";
 
 export type TabIconKey = "dashboard" | "curso" | "info" | "admin" | "ranking" | "mapa";
 
@@ -46,6 +47,9 @@ export default function TabBar({ tabs }: Props) {
 
   return (
     <div className="relative w-full max-w-md mx-auto">
+      <div className="absolute -top-11 right-2 z-20">
+        <NotifBadge />
+      </div>
       <div
         className="relative bg-cafe rounded-full shadow-lg"
         onMouseLeave={() => setHoveredIndex(null)}

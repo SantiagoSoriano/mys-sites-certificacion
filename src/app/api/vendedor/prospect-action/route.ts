@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { releaseMapaProspect } from "@/lib/mapa-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
   // Verificar que el prospect esté asignado a este vendedor
   const { data: prospect } = await supabase
     .from("prospects")
-    .select("id, estado, asignado_a")
+    .select("id, estado, asignado_a, mapa_prospectos_id")
     .eq("id", body.prospect_id)
     .maybeSingle();
 
@@ -83,6 +84,15 @@ export async function POST(request: Request) {
       user_id: user.id,
       ts: now,
     });
+    // Liberar en el Mapa para que otro vendedor lo pueda tomar.
+    // Falla en silencio si el Mapa está dormido o inaccesible — el estado local ya está guardado.
+    if (prospect.mapa_prospectos_id) {
+      try {
+        await releaseMapaProspect(prospect.mapa_prospectos_id);
+      } catch (e) {
+        console.warn("[prospect-action] release al Mapa falló:", e);
+      }
+    }
     return NextResponse.json({ ok: true, action: "cerrado_sin_venta" });
   }
 
